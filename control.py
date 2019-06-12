@@ -13,7 +13,6 @@ class BruteSampler(node.Sampler):
         self.sample = self.containersin.read()
 
     def pull(self):
-        print self.sample
         self.containersin.remove(self.sample)
         pass
 
@@ -40,6 +39,26 @@ class SimpleSampler(node.Sampler):
     def push(self):
         self.containersout.add(self.sample)
         pass
+
+class OrderedSampler(node.Sampler):
+
+    def __init__(self, containersin, containersout, readcontainers=None, n=1):
+        super(FirstSampler, self).__init__(containersin, containersout, readcontainers)
+        self.sample = []
+        self.size = n
+        pass
+
+    def read(self):
+        self.sample = self.containersin.read()[0:self.size]
+
+    def pull(self):
+        self.containersin.remove(self.sample)
+        pass
+
+    def push(self):
+        self.containersout.add(self.sample)
+        pass
+
 
 
 class ClockObserver(node.Observer):
