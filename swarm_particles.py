@@ -75,3 +75,10 @@ class BoidError:
             return 'Tendancy of pacekeeping outside 0-1 range'
         elif self.etype == '':
             return 'Unknown Boid Error'
+
+def initialise_swarm(initialParameters, bounds, size):
+    swarm = []
+    for i in range(len(initialParameters)):
+        print initialParameters[i][1]
+        swarm = swarm + [Boid(initialParameters[i][1],bounds) for num in range(size/initialParameters[i][0])]
+    return swarm
