@@ -110,7 +110,7 @@ class Graph(object):
                 # Find possible transitions then use transfer to get choice between them
                 options = self.graphdict[pointer]
                 choice = pointer.transition()
-                print choice, options, type(pointer) if self.verbose else None
+                print([choice, options, type(pointer)]) if self.verbose else None
                 pointer = options[choice]  # Set new pointer
             else:
                 # Transfer

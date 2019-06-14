@@ -45,7 +45,7 @@ class ControlNode(object):
 
     @abc.abstractmethod
     def check(self):
-        return 1
+        return 0
 
     @abc.abstractmethod
     def pull(self):
@@ -116,7 +116,7 @@ class Decision(ControlNode):
         return self.options[0]
 
     def check(self):
-        super(Decision, self).check()
+        return super(Decision, self).check()
 
     def pull(self):
         super(Decision, self).pull()
@@ -159,7 +159,7 @@ class Sampler(ControlNode):
         super(Sampler, self).push()
         
     def check(self):
-        super(Sampler, self).check()
+        return super(Sampler, self).check()
         
     def process(self):
         super(Sampler, self).process()
@@ -198,7 +198,7 @@ class Observer(ControlNode):
         super(Observer, self).pull()
 
     def check(self):
-        super(Observer, self).check()
+        return super(Observer, self).check()
 
 
 class Tank(ContainerNode):
