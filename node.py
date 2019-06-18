@@ -60,6 +60,26 @@ class ControlNode(object):
         pass
 
 
+class Termination(ControlNode):
+
+    def __init__(self):
+        super(Termination, self).__init__()
+
+    def read(self):
+        super(Termination, self).read()
+
+    def pull(self):
+        super(Termination, self).pull()
+
+    def check(self):
+        super(Termination, self).check()
+
+    def process(self):
+        super(Termination, self).process()
+
+    def push(self):
+        super(Termination, self).push()
+
 class Action(ControlNode):
     __metaclass__ = abc.ABCMeta
 
@@ -76,7 +96,7 @@ class Action(ControlNode):
 
     @abc.abstractmethod
     def check(self):
-        return super(Action, self).check()
+        return 0
 
     @abc.abstractmethod
     def process(self):
@@ -175,7 +195,9 @@ class Observer(ControlNode):
             raise ValueError("Observers can only read containers nodes and write to variables")
         self.containersin = containersin
         self.containersout = containersout
-        if not isinstance(readcontainers, ContainerNode) and readcontainers:
+        if not isinstance(readcontainers, ContainerNode) and readcontainers and not isinstance(readcontainers, list):
+            raise ValueError("Observer can only read from containers")
+        elif isinstance(readcontainers, list) and  not all(isinstance(rc, ContainerNode) for rc in readcontainers):
             raise ValueError("Observer can only read from containers")
         self.readcontainers = readcontainers
         self.index = index
@@ -183,7 +205,7 @@ class Observer(ControlNode):
 
     @abc.abstractmethod
     def read(self):
-        return self.readcontainers.read()
+        return [rc.read() for rc in self.readcontainers]
 
     @abc.abstractmethod
     def process(self):

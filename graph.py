@@ -104,10 +104,14 @@ class Graph(object):
         if inputtank:  # If loading from a file pass file into initial pointer for load function before main loop
             pointer.transition()
             pointer = self.graphdict[pointer]
-        while transitions < transitionlimit:
-            if isinstance(pointer, node.Decision):
+        while transitions <= transitionlimit:
+            if istinstance(pointer, node.Termination):
+                # End process
+                break
+            elif isinstance(pointer, node.Decision):
                 # Different transfer protocol
                 # Find possible transitions then use transfer to get choice between them
+                if
                 options = self.graphdict[pointer]
                 choice = pointer.transition()
                 print([choice, options, type(pointer)]) if self.verbose else None
@@ -116,6 +120,7 @@ class Graph(object):
                 # Transfer
                 pointer.transition()
                 pointer = self.graphdict[pointer]  # Find next pointer in graph and reset pointer
-            transitions = transitions+1
+            if transitionlimit:
+                transitions = transitions+1
         # processes over the graph by running the nodes starting from the pointer with the preload files passed in
         pass

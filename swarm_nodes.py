@@ -1,40 +1,385 @@
 import node
 import numpy as np
+import random
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 # import container
 # standard load/ gen node (2 versions, generic load and a generator node specific)
-# action copy - possibly should be generic
-# G - 2 bulk samplers to put copies into tanks - generics should be usable
-# G - single sampler - generic
-# sampler build to read tank and sample to sample neighbours
-# Observer for neighbour averagess
-# G - bulk sampler to return neighbours - generic
-# subgraph
-## decision for flock or wander
-### Flock
-#### a cohesion
-#### align
-#### seperation
-#### whim
-### random
-#### random walk
-## pacekeeping
-## push boid
-## loop
-## pull each in tn+1 through sample into t temp
-## update position while sample
-## bulk transfer back to t:n+1.
-## position update
-# G - bulk return sammpler to put sample into next gen tank
+# Brute sampler pregen boids put into a list container.
+# default ordered sampler
 
-# Containers:
-## env gen
-## boids left (When editing keep it mod list length for double use. Possibly reset on decision. Or if <0 reset to len-1)
-## sample input
-## sample time 0
-## smaple time 1
-## tank n
-## tank temp
-## tank n+1
-## sample boid
-## tank neigh
-## environment neigh
+
+# uses first boid in sample (or random in unordered container) for reference to pull neighbours
+class NeighbourSampler(node.Sampler):
+
+    def __init__(self, containersin, containersout, readcontainers=None):
+        super(NeighbourSampler, self).__init__(containersin, containersout, readcontainers)
+        self.Neighbours = []
+        self.boid = None
+
+    def read(self):
+        self.boid = self.readcontainers.read()[0]
+        self.Neighbours = [neighbour for neighbour in self.containersin.read() if
+                           self.boid.currentPosition[0]-self.boid.R <= neighbour.currentPosition[0]
+                           <= self.boid.currentPosition[0]+self.boid.R and self.boid.currentPosition[1]-self.boid.R
+                           <= neighbour.currentPosition[1] <= self.boid.currentPosition[1]+self.boid.R]
+
+    def pull(self):
+        self.containersin.remove(self.Neighbours)
+
+    def push(self):
+        self.containersout.add(self.Neighbours)
+
+
+# BUILD Observer to generate averages of neighbours (check if this needs to include boid itself)
+class NeighbourObserver(node.Observer):
+
+    def __init__(self, containersin, containersout, readcontainers=None):
+        super(NeighbourObserver, self).__init__(containersin, containersout, readcontainers)
+        self.boid = None
+        self.Neighbours = []
+        self.Oldav = []
+        self.posAv = None
+        self.volAv = None
+        self.sepTot = None
+
+    def read(self):
+        self.boid = self.readcontainers[0].read()[0]
+        self.Neighbours = self.readcontainers[1].read()
+        self.Oldav = self.containersin.read()
+
+    def pull(self):
+        self.containersout.remove(self.Oldav)
+
+    def process(self):
+        self.posAv = [np.mean([boid.currentposition[0] for boid in self.Neighbours]),
+                      np.mean([boid.currentposition[1] for boid in self.Neighbours])]
+        self.volAv = [np.mean([boid.currentvelocity[0] for boid in self.Neighbours]),
+                      np.mean([boid.currentvelocity[1] for boid in self.Neighbours])]
+        self.sepTot = sum(np.array([(self.boid.currentposition-n.currentposition) /
+                                    (np.absolute(np.linalg.norm(self.boid.currentposition-n.currentposition))**2)
+                                    for n in self. Neighbours]))
+
+    def push(self):
+        self.containersout.add([self.posAv, self.volAv, self.sepTot])
+
+# BruteSampler to return neighbours
+
+# flocking action and decision nodes COME BACK TO THESE
+
+# decision for flock or wander
+# Flock
+# a cohesion
+
+
+class CohesionAction(node.Action):
+
+    def __init__(self, writesample, readsample, readcontainers):
+        super(CohesionAction, self).__init__(writesample, readsample, readcontainers)
+        self.avPos = None
+        self.boid = None
+
+    def read(self):
+        self.avPos = self.readcontainers.read()[0]
+        self.boid = self.readsample.read()[0]
+
+    def check(self):
+        return super(CohesionAction, self).check()
+
+    def pull(self):
+        self.readsample.remove(self.boid)
+
+    def process(self):
+        self.boid.acceleration = self.boid.c1*(self.avPos - self.boid.currentposition)
+
+    def push(self):
+        self.writesample.add(self.boid)
+
+
+# align
+class AlignAction(node.Action):
+
+    def __init__(self, writesample, readsample, readcontainers):
+        super(AlignAction, self).__init__(writesample, readsample, readcontainers)
+        self.avVel = None
+        self.boid = None
+
+    def read(self):
+        self.avVel = self.readcontainers.read()[1]
+        self.boid = self.readsample.read()[0]
+
+    def check(self):
+        return super(AlignAction, self).check()
+
+    def pull(self):
+        self.readsample.remove(self.boid)
+
+    def process(self):
+        self.boid.acceleration = self.boid.acceleration+self.boid.c2*(self.avVel - self.boid.currentvelocity)
+
+    def push(self):
+        self.writesample.add(self.boid)
+
+
+# seperation
+class SeperationAction(node.Action):
+
+    def __init__(self, writesample, readsample, readcontainers):
+        super(SeperationAction, self).__init__(writesample, readsample, readcontainers)
+        self.totSep = None
+        self.boid = None
+
+    def read(self):
+        self.totSep = self.readcontainers.read()[2]
+        self.boid = self.readsample.read()[0]
+
+    def check(self):
+        return super(SeperationAction, self).check()
+
+    def pull(self):
+        self.readsample.remove(self.boid)
+
+    def process(self):
+        self.boid.acceleration = self.boid.acceleration+self.boid.c3*self.totSep
+
+    def push(self):
+        self.writesample.add(self.boid)
+
+
+# whim
+class WhimAction(node.Action):
+
+    def __init__(self, writesample, readsample):
+        super(WhimAction, self).__init__(writesample, readsample)
+        self.boid = None
+
+    def read(self):
+        self.boid = self.readsample.read()[0]
+
+    def check(self):
+        return super(WhimAction, self).check()
+
+    def pull(self):
+        self.readsample.remove(self.boid)
+
+    def process(self):
+        self.boid.acceleration = self.boid.acceleration + np.array([random.random()-0.5, random.random()-0.5])
+
+    def push(self):
+        self.writesample.add(self.boid)
+
+
+# random
+# random walk
+class RWalkAction(node.Action):
+
+    def __init__(self, writesample, readsample, readcontainers):
+        super(RWalkAction, self).__init__(writesample, readsample, readcontainers)
+        self.boid = None
+
+    def read(self):
+        self.boid = self.readsample.read()[0]
+
+    def check(self):
+        return super(RWalkAction, self).check()
+
+    def pull(self):
+        self.readsample.remove(self.boid)
+
+    def process(self):
+        self.boid.acceleration = np.array([random.random()-0.5, random.random()-0.5])
+
+    def push(self):
+        self.writesample.add(self.boid)
+
+
+# pacekeeping
+class UpdateVAction(node.Action):
+
+    def __init__(self, writesample, readsample):
+        super(UpdateVAction, self).__init__(writesample, readsample)
+        self.boid = None
+
+    def read(self):
+        self.boid = self.readsample.read()[0]
+
+    def check(self):
+        return super(UpdateVAction, self).check()
+
+    def pull(self):
+        self.readsample.remove(self.boid)
+
+    def process(self):
+        self.boid.newvelocity = self.boid.currentvelocity + self.boid.acceleration
+        self.boid.newvelocity = np.dot(min(self.boid.Vm / np.linalg.norm(self.boid.newvelocity), 1),
+                                       self.boid.newvelocity)
+        self.boid.newvelocity = self.boid.c5 * np.array(np.dot(self.boid.Vn / np.linalg.norm(self.boid.currentvelocity),
+                                                               self.boid.newvelocity)
+                                                        ) + (1 - self.boid.c5) * np.array(self.boid.currentvelocity)
+
+    def push(self):
+        self.writesample.add(self.boid)
+
+# Ordered Sampler works with ordered containers, always adds to end and removes from start. Mostly done by using a
+# type of ordered container.
+
+# clock observer
+
+# counter decision
+
+# ordered sampler from above
+
+# action update position and velocity
+
+
+class UpdatePAction(node.Action):
+
+    def __init__(self, writesample, readsample):
+        super(UpdatePAction, self).__init__(writesample, readsample)
+        self.boid = None
+
+    def read(self):
+        self.boid = self.readsample.read()[0]
+
+    def check(self):
+        return super(UpdatePAction, self).check()
+
+    def pull(self):
+        self.readsample.remove(self.boid)
+
+    def process(self):
+        self.boid.currentvelocity = self.boid.newvelocity
+        self.boid.currentposition = self.boid.currentposition + self.boid.currentvelocity
+
+    def push(self):
+        self.writesample.add(self.boid)
+
+
+# ordered sampler from above
+
+# clock observer
+
+# counter decision
+
+# observation logger - does all the things.
+class VizLoggerObserver(node.Observer):
+
+    def __init__(self, containersin, containersout, readcontainers=None, index=None):
+        super(VizLoggerObserver, self).__init__(containersin, containersout, readcontainers, index)
+        self.tank = None
+        self.positions = []
+        self.velocities = []
+
+    def read(self):
+        self.tank = self.readcontainers[0].read()
+
+    def pull(self):
+        super(VizLoggerObserver, self).pull()
+        self.positions = []
+        self.velocities = []
+
+    def process(self):
+        for boid in self.tank:
+            self.positions.append(tuple(boid.currentposition))
+            self.velocities.append(tuple(boid.currentvelocity))
+
+    def push(self):
+        self.containersout[0].add(tuple(self.tank))
+        self.containersout[1].add(tuple(self.positions))
+        self.containersout[2].add(tuple(self.velocities))
+
+
+class VisualizerObserver(node.Observer):
+
+    def __init__(self, containerin, containerout, readcontainers, bounds, boid_size, gen_time):
+        super(VisualizerObserver, self).__init__(containerin, containerout, readcontainers)
+        self.gen_time = gen_time
+        self.bounds = bounds
+        self.boid_size = boid_size
+        self.world = None
+        self.dt = 1
+        self.fig = plt.figure()
+        self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+        self.ax = self.fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(bounds[0], bounds[1]),
+                                       ylim=(bounds[2], bounds[3]))
+        self.particles, = self.ax.plot([], [], 'bo', ms=6)
+        self.rect = plt.Rectangle(self.bounds[::2], self.bounds[1] - self.bounds[0],
+                                  self.bounds[3] - self.bounds[2], ec='none', lw=2, fc='none')
+        self.ax.add_patch(self.rect)
+        self.anim = None
+        self.viz_gens = None
+        self.sa = None
+
+    def read(self):
+        super(VisualizerObserver, self).read()
+        self.world = Surface(self.containersin.read(), self.bounds, self.boid_size)
+        self.viz_gens = self.containersin.read()
+
+    def pull(self):
+        super(VisualizerObserver, self).pull()
+
+    def process(self):
+        super(VisualizerObserver, self).process()
+        self.sa = SwarmAnimation(self.world, self.rect, self.viz_gens, self.gen_time, self.fig, self.ax, self.dt)
+        self.anim = animation.FuncAnimation(self.fig, self.sa.animate, frames=600, interval=10, blit=True,
+                                            init_func=self.sa.init)
+        plt.show()
+
+    def push(self):
+        super(VisualizerObserver, self).push()
+        self.anim.save(self.containersout.read(), writer="mencoder", fps=30, extra_args=['-vcodec', 'libx263'])
+
+
+class Surface:
+    #    """init_state is an [N x 4] array, where N is the number of boids:
+    #        [[x1, y1, vx1, vy1],
+    #            [x2,y2,vx2,vy2],
+    #            ...             ]
+    #
+    #        bounds is the size of the box: [xmin, xmax, ymin, ymax]
+    #    """
+    def __init__(self, viz_gen, bounds=tuple([-150, 150, -150, 150]), boid_size=0.4):
+        # generat initial state of swarm from boids
+        init_state = np.array(viz_gen)
+        self.init_state = np.array(init_state)
+        self.boid_size = boid_size
+        self.state = self.init_state.copy()
+        self.time_elapsed = 0
+        self.bounds = bounds
+        self.gen_time = 100
+        self.size = 0.04
+
+    def updatestep(self, viz_gens, i):
+        # update velocities taken from swarm and passed into surface/gen_time to give smoother generations
+        state = np.array(viz_gens[i])
+        self.state = state
+
+    def step(self, dt):
+        # generation is defined as gen_time time steps
+        self.time_elapsed = dt
+
+
+class SwarmAnimation:
+
+    def __init__(self, world, rect, viz_gens, gen_time, fig, ax, dt):
+        self.world = world
+        self.rect = rect
+        self.viz_gens = viz_gens
+        self.gen_time = gen_time
+        self.fig = fig
+        self.ax = ax
+        self.dt = dt
+
+    def init(self):
+        self.world.particles.set_data([], [])
+        self.rect.set_edgecolor('none')
+        return self.world.particles, self.rect
+
+    def animate(self):
+        # self.swarm = self.world.updateStep(self.dt, self.gen_time, self.viz_gens, i)
+        # self.ms = int(self.fig.dpi * 2 * self.world.size * self.fig.get_figwidth() / np.diff(self.ax.get_xbound())[0])
+        self.rect.set_edgecolor('k')
+        self.world.particles.set_data(self.world.state[:, 0], self.world.state[:, 1])
+        self.world.particles.set_markersize(10)
+        return self.world.particles, self.rect
+

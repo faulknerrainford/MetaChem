@@ -40,10 +40,11 @@ class SimpleSampler(node.Sampler):
         self.containersout.add(self.sample)
         pass
 
+
 class OrderedSampler(node.Sampler):
 
     def __init__(self, containersin, containersout, readcontainers=None, n=1):
-        super(FirstSampler, self).__init__(containersin, containersout, readcontainers)
+        super(OrderedSampler, self).__init__(containersin, containersout, readcontainers)
         self.sample = []
         self.size = n
         pass
@@ -58,7 +59,6 @@ class OrderedSampler(node.Sampler):
     def push(self):
         self.containersout.add(self.sample)
         pass
-
 
 
 class ClockObserver(node.Observer):
