@@ -31,6 +31,8 @@ class ListTank(node.Tank):
         # print particles
         if self.list and isinstance(self.list[0], list) and not isinstance(particles[0], list):
             self.list.remove(particles)
+        elif not isinstance(particles,list):
+            self.list.remove(particles)
         elif self.list:
             [self.list.remove(part) for part in particles]
         return self.list
@@ -87,7 +89,9 @@ class ListEnvironment(node.Environment):
         return self.list
 
     def remove(self, variables=None):
-        if variables:
+        if variables and isinstance(variables, list):
+            [self.list.remove(var) for var in variables]
+        elif variables:
             self.list.remove(variables)
         return self.list
 

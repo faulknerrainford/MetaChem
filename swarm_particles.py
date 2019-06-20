@@ -81,5 +81,5 @@ class BoidError:
 def initialise_swarm(initialparameters, bounds, size):
     swarm = []
     for i in range(len(initialparameters)):
-        swarm = swarm + [Boid(initialparameters[i][1], bounds) for _ in range(size/initialparameters[i][0])]
+        swarm = swarm + [Boid(initialparameters[i][1], bounds) for _ in range(size)]
     return swarm

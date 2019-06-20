@@ -191,7 +191,10 @@ class Observer(ControlNode):
     @abc.abstractmethod
     def __init__(self, containersin, containersout, readcontainers=None, index=0):
         super(Observer, self).__init__()
-        if not isinstance(containersin, ContainerNode) or not isinstance(containersout, Environment):
+        if containersin and not isinstance(containersin, ContainerNode) and \
+                not all(isinstance(ci, ContainerNode) for ci in containersin) or \
+                 containersout and not isinstance(containersout, Environment) and \
+                not all(isinstance(co, Environment) for co in containersout):
             raise ValueError("Observers can only read containers nodes and write to variables")
         self.containersin = containersin
         self.containersout = containersout

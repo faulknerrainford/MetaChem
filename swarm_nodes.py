@@ -37,31 +37,57 @@ class NeighbourObserver(node.Observer):
     def __init__(self, containersin, containersout, readcontainers=None):
         super(NeighbourObserver, self).__init__(containersin, containersout, readcontainers)
         self.boid = None
-        self.Neighbours = []
+        self.NeighPos = []
+        self.NeighVel = []
         self.Oldav = []
         self.posAv = None
         self.volAv = None
         self.sepTot = None
+        self.count = 0
 
     def read(self):
         self.boid = self.readcontainers[0].read()[0]
-        self.Neighbours = self.readcontainers[1].read()
-        self.Oldav = self.containersin.read()
+        self.NeighPos = self.readcontainers[1].read()[-1]
+        self.NeighVel = self.readcontainers[2].read()[-1]
+        self.Oldav = self.containersin[0].read()
+        self.count = self.containersin[1].read()
 
     def pull(self):
-        self.containersout.remove(self.Oldav)
+        self.containersin[0].remove(self.Oldav)
+        self.containersin[1].remove(self.count)
 
     def process(self):
-        self.posAv = [np.mean([boid.currentposition[0] for boid in self.Neighbours]),
-                      np.mean([boid.currentposition[1] for boid in self.Neighbours])]
-        self.volAv = [np.mean([boid.currentvelocity[0] for boid in self.Neighbours]),
-                      np.mean([boid.currentvelocity[1] for boid in self.Neighbours])]
-        self.sepTot = sum(np.array([(self.boid.currentposition-n.currentposition) /
-                                    (np.absolute(np.linalg.norm(self.boid.currentposition-n.currentposition))**2)
-                                    for n in self. Neighbours]))
+        neighbour = []
+        for i in range(len(list(self.NeighPos))):
+            # for each in the positions if they are a neighbour then add them to the listings.
+            currentrecord =self.NeighPos[i]
+            currentvel = self.NeighVel[i]
+            while isinstance(currentrecord[0], list) or isinstance(currentrecord[0], np.ndarray):
+                currentrecord = currentrecord[0]
+                currentvel = currentvel[0]
+            while isinstance(self.boid.currentposition[0], list) or isinstance( self.boid.currentposition[0], np.ndarray):
+                self.boid.currentposition = self.boid.currentposition[0]
+            print currentrecord[0]
+            print self.boid.currentposition
+            print self.boid.r
+            if self.boid.currentposition[0]-self.boid.r <= currentrecord[0] <= \
+                    self.boid.currentposition[0]+self.boid.r and self.boid.currentposition[1]-self.boid.r <= \
+                    currentrecord[1] <= self.boid.currentposition[1]+self.boid.r:
+                neighbour = neighbour + [tuple([currentrecord, currentvel])]
+        if neighbour:
+            self.posAv = [np.mean([boid[0][0] for boid in neighbour]),
+                          np.mean([boid[0][1] for boid in neighbour])]
+            self.volAv = [np.mean([boid[1][0] for boid in neighbour]),
+                          np.mean([boid[1][1] for boid in neighbour])]
+            print self.boid.currentposition-neighbour[0][0:1]
+            print self.boid.currentposition
+            print neighbour[0][0:1]
+            self.sepTot = sum(np.array([(self.boid.currentposition-n[0:1]) / (np.absolute(np.linalg.norm(self.boid.currentposition-n[0:1]))**2)for n in neighbour if np.all(np.array(self.boid.currentposition-n[0:1])!= 0)]))
+        self.count = len(neighbour)
 
     def push(self):
-        self.containersout.add([self.posAv, self.volAv, self.sepTot])
+        self.containersout[0].add([self.posAv, self.volAv, self.sepTot])
+        self.containersout[1].add(self.count)
 
 # BruteSampler to return neighbours
 
@@ -173,8 +199,8 @@ class WhimAction(node.Action):
 # random walk
 class RWalkAction(node.Action):
 
-    def __init__(self, writesample, readsample, readcontainers):
-        super(RWalkAction, self).__init__(writesample, readsample, readcontainers)
+    def __init__(self, writesample, readsample):
+        super(RWalkAction, self).__init__(writesample, readsample)
         self.boid = None
 
     def read(self):
@@ -269,30 +295,35 @@ class VizLoggerObserver(node.Observer):
         self.tank = None
         self.positions = []
         self.velocities = []
+        self.time = None
 
     def read(self):
-        self.tank = self.readcontainers[0].read()
+        self.tank = self.readcontainers.read()
+        self.time = self.containersin.read()[0]
 
     def pull(self):
         super(VizLoggerObserver, self).pull()
         self.positions = []
         self.velocities = []
+        self.containersin.remove([self.time])
 
     def process(self):
         for boid in self.tank:
-            self.positions.append(tuple(boid.currentposition))
-            self.velocities.append(tuple(boid.currentvelocity))
+            self.positions.append(boid.currentposition)
+            self.velocities.append(boid.currentvelocity)
+        self.time = self.time + 1
 
     def push(self):
         self.containersout[0].add(tuple(self.tank))
         self.containersout[1].add(tuple(self.positions))
         self.containersout[2].add(tuple(self.velocities))
+        self.containersout[3].add(self.time)
 
 
 class VisualizerObserver(node.Observer):
 
-    def __init__(self, containerin, containerout, readcontainers, bounds, boid_size, gen_time):
-        super(VisualizerObserver, self).__init__(containerin, containerout, readcontainers)
+    def __init__(self, containersin, bounds, boid_size, gen_time):
+        super(VisualizerObserver, self).__init__(containersin, None)
         self.gen_time = gen_time
         self.bounds = bounds
         self.boid_size = boid_size
@@ -327,7 +358,7 @@ class VisualizerObserver(node.Observer):
 
     def push(self):
         super(VisualizerObserver, self).push()
-        self.anim.save(self.containersout.read(), writer="mencoder", fps=30, extra_args=['-vcodec', 'libx263'])
+        self.anim.save('swarmani.mp4', writer="mencoder", fps=30, extra_args=['-vcodec', 'libx263'])
 
 
 class Surface:
@@ -382,4 +413,3 @@ class SwarmAnimation:
         self.world.particles.set_data(self.world.state[:, 0], self.world.state[:, 1])
         self.world.particles.set_markersize(10)
         return self.world.particles, self.rect
-
