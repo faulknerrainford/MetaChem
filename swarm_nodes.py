@@ -60,16 +60,13 @@ class NeighbourObserver(node.Observer):
         neighbour = []
         for i in range(len(list(self.NeighPos))):
             # for each in the positions if they are a neighbour then add them to the listings.
-            currentrecord =self.NeighPos[i]
+            currentrecord = self.NeighPos[i]
             currentvel = self.NeighVel[i]
             while isinstance(currentrecord[0], list) or isinstance(currentrecord[0], np.ndarray):
                 currentrecord = currentrecord[0]
                 currentvel = currentvel[0]
-            while isinstance(self.boid.currentposition[0], list) or isinstance( self.boid.currentposition[0], np.ndarray):
+            while isinstance(self.boid.currentposition[0], list) or isinstance(self.boid.currentposition[0], np.ndarray):
                 self.boid.currentposition = self.boid.currentposition[0]
-            print currentrecord[0]
-            print self.boid.currentposition
-            print self.boid.r
             if self.boid.currentposition[0]-self.boid.r <= currentrecord[0] <= \
                     self.boid.currentposition[0]+self.boid.r and self.boid.currentposition[1]-self.boid.r <= \
                     currentrecord[1] <= self.boid.currentposition[1]+self.boid.r:
@@ -79,10 +76,7 @@ class NeighbourObserver(node.Observer):
                           np.mean([boid[0][1] for boid in neighbour])]
             self.volAv = [np.mean([boid[1][0] for boid in neighbour]),
                           np.mean([boid[1][1] for boid in neighbour])]
-            print self.boid.currentposition-neighbour[0][0:1]
-            print self.boid.currentposition
-            print neighbour[0][0:1]
-            self.sepTot = sum(np.array([(self.boid.currentposition-n[0:1]) / (np.absolute(np.linalg.norm(self.boid.currentposition-n[0:1]))**2)for n in neighbour if np.all(np.array(self.boid.currentposition-n[0:1])!= 0)]))
+            self.sepTot = sum(np.array([(self.boid.currentposition-n[0:1]) / (np.absolute(np.linalg.norm(self.boid.currentposition-n[0:1]))**2)for n in neighbour if np.all(np.array(self.boid.currentposition-n[0:1]) != 0)]))
         self.count = len(neighbour)
 
     def push(self):
@@ -322,8 +316,8 @@ class VizLoggerObserver(node.Observer):
 
 class VisualizerObserver(node.Observer):
 
-    def __init__(self, containersin, bounds, boid_size, gen_time):
-        super(VisualizerObserver, self).__init__(containersin, None)
+    def __init__(self, readcontainers, bounds, boid_size, gen_time):
+        super(VisualizerObserver, self).__init__(None, None, readcontainers)
         self.gen_time = gen_time
         self.bounds = bounds
         self.boid_size = boid_size
@@ -343,22 +337,25 @@ class VisualizerObserver(node.Observer):
 
     def read(self):
         super(VisualizerObserver, self).read()
-        self.world = Surface(self.containersin.read(), self.bounds, self.boid_size)
-        self.viz_gens = self.containersin.read()
-
+        self.world = Surface(self.readcontainers, self.particles, self.bounds, self.boid_size)
+        self.viz_gens = self.readcontainers.read()
+        for gen in self.viz_gens:
+            for coord in gen:
+                while isinstance(coord[0], list) or isinstance(coord[0], np.ndarray):
+                    coord = coord[0]
     def pull(self):
         super(VisualizerObserver, self).pull()
 
     def process(self):
         super(VisualizerObserver, self).process()
-        self.sa = SwarmAnimation(self.world, self.rect, self.viz_gens, self.gen_time, self.fig, self.ax, self.dt)
-        self.anim = animation.FuncAnimation(self.fig, self.sa.animate, frames=600, interval=10, blit=True,
+        self.sa = SwarmAnimation(self.world, self.rect, self.viz_gens, self.gen_time, self.fig, self.ax, self.dt, self.boid_size)
+        self.anim = animation.FuncAnimation(self.fig, self.sa.animate, frames=self.gen_time, interval=10, blit=True,
                                             init_func=self.sa.init)
         plt.show()
 
     def push(self):
         super(VisualizerObserver, self).push()
-        self.anim.save('swarmani.mp4', writer="mencoder", fps=30, extra_args=['-vcodec', 'libx263'])
+        self.anim.save('swarmani.mp4')
 
 
 class Surface:
@@ -369,7 +366,7 @@ class Surface:
     #
     #        bounds is the size of the box: [xmin, xmax, ymin, ymax]
     #    """
-    def __init__(self, viz_gen, bounds=tuple([-150, 150, -150, 150]), boid_size=0.4):
+    def __init__(self, viz_gen, particles, bounds=tuple([-150, 150, -150, 150]), boid_size=0.4):
         # generat initial state of swarm from boids
         init_state = np.array(viz_gen)
         self.init_state = np.array(init_state)
@@ -379,8 +376,9 @@ class Surface:
         self.bounds = bounds
         self.gen_time = 100
         self.size = 0.04
+        self.particles = particles
 
-    def updatestep(self, viz_gens, i):
+    def updateStep(self, viz_gens, i):
         # update velocities taken from swarm and passed into surface/gen_time to give smoother generations
         state = np.array(viz_gens[i])
         self.state = state
@@ -392,7 +390,7 @@ class Surface:
 
 class SwarmAnimation:
 
-    def __init__(self, world, rect, viz_gens, gen_time, fig, ax, dt):
+    def __init__(self, world, rect, viz_gens, gen_time, fig, ax, dt, boid_size):
         self.world = world
         self.rect = rect
         self.viz_gens = viz_gens
@@ -400,16 +398,17 @@ class SwarmAnimation:
         self.fig = fig
         self.ax = ax
         self.dt = dt
+        self.boid_size = boid_size
 
     def init(self):
         self.world.particles.set_data([], [])
         self.rect.set_edgecolor('none')
         return self.world.particles, self.rect
 
-    def animate(self):
-        # self.swarm = self.world.updateStep(self.dt, self.gen_time, self.viz_gens, i)
-        # self.ms = int(self.fig.dpi * 2 * self.world.size * self.fig.get_figwidth() / np.diff(self.ax.get_xbound())[0])
+    def animate(self, i):
+        self.world.updateStep(self.viz_gens, i)
+        self.ms = int(self.fig.dpi * 2 * self.world.size * self.fig.get_figwidth() / np.diff(self.ax.get_xbound())[0])
         self.rect.set_edgecolor('k')
-        self.world.particles.set_data(self.world.state[:, 0], self.world.state[:, 1])
-        self.world.particles.set_markersize(10)
+        self.world.particles.set_data(self.world.state[:][0], self.world.state[:][1])
+        self.world.particles.set_markersize(self.boid_size)
         return self.world.particles, self.rect

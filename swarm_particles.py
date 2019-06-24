@@ -12,8 +12,6 @@ warnings.filterwarnings('error')
 class Boid:
 
     def __init__(self, currentparams, bounds, colour='black'):
-        print(bounds)
-        print(currentparams)
         [r, vn, vm, c1, c2, c3, c4, c5] = currentparams
         self.r = r
         self.Vn = vn

@@ -208,7 +208,10 @@ class Observer(ControlNode):
 
     @abc.abstractmethod
     def read(self):
-        return [rc.read() for rc in self.readcontainers]
+        if not isinstance(self.readcontainers, list):
+            return self.readcontainers.read()
+        else:
+            return [rc.read() for rc in self.readcontainers]
 
     @abc.abstractmethod
     def process(self):

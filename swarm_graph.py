@@ -8,11 +8,13 @@ import graph
 gen_num = 100
 bounds = [-1000, 1000, -1000, 1000]
 boid_size = 1
+swarm_size = 100
 
 # Containers:
 #   sample input
 samplein = container.ListSample()
-samplein.add(swarm_particles.initialise_swarm([[1, [70.55, 5.52, 7.39, 0.97, 0.45, 35.51, 0.45, 0.06]]], bounds, 100))
+samplein.add(swarm_particles.initialise_swarm([[1, [70.55, 5.52, 7.39, 0.97, 0.45, 35.51, 0.45, 0.06]]], bounds,
+                                              swarm_size))
 # fill start container
 
 #   tank n
@@ -55,7 +57,7 @@ demptyt = control.EmptyDecision(2, tankt)  # Loop as option 2
 sreset = control.BruteSampler(tankn1, tankn)
 # Terminator, decision and visualiser
 dgen = control.CounterDecision(2, envGen, gen_num)  # Termination as option 2
-oviz = swarm_nodes.VisualizerObserver([envPos, envVel], bounds, boid_size, gen_num)
+oviz = swarm_nodes.VisualizerObserver(envPos, bounds, boid_size, gen_num)
 term = node.Termination()
 
 # Graph
