@@ -284,6 +284,56 @@ class UpdatePAction(node.Action):
 
 # counter decision
 
+# Collision nodes
+
+#   Collision observer
+class collisionObserver(node.Observer):
+
+    def __init__(self, containersin, containersout, readcontainers=None, index=0, coll_dist=1):
+        super(collisionObserver, self).__init__(containersin, containersout, readcontainers, index)
+        self.coll_dist = coll_dist
+        self.coll_list = []
+
+    def read(self):
+        super(collisionObserver, self).read()
+        self.tank = self.readcontainers.read()
+
+    def pull(self):
+        super(collisionObserver, self).pull()
+
+    def process(self):
+        for boid in self.tank:
+            self.tank = self.tank[1:]
+            for neigh in self.tank:
+                if (boid.currentposition - neigh.currentposition).all < self.coll_dist:
+                    self.coll_list.append(np.ndarray([boid.id, neigh.id]))
+
+    def push(self):
+        self.containersout.add(self.coll_list)
+
+
+#   Collision Sampler
+class collisionSampler(node.Sampler):
+
+    def __init__(self, containersin, containersout, readcontainers):
+        super(collisionSampler, self).__init__(containersin, containersout, readcontainers)
+
+    def read(self):
+        super(collisionSampler, self).read()
+        self.coll= self.readcontainers.read()[0]
+        self.tank = self.containersin.read()
+
+    def pull(self):
+        self.sample = [boid for boid in self.tank if boid.id in self.coll]
+        self.containersin.remove(self.sample)
+
+    def push(self):
+        self.containersout.add(self.sample)
+
+
+#   Collision action
+
+
 # observation logger - does all the things.
 class VizLoggerObserver(node.Observer):
 
