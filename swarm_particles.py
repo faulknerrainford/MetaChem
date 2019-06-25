@@ -23,8 +23,8 @@ class Boid:
         self.c5 = c5
         self.colour = colour
         self.currentvelocity = np.array([random.randrange(int(-vn), int(vn)), random.randrange(int(-vn), int(vn))])
-        while np.linalg.norm(self.currentvelocity) == 0:
-            self.currentelocity = np.array([random.randrange(int(-vn), int(vn)), random.randrange(int(-vn), int(vn))])
+        if np.linalg.norm(self.currentvelocity) == 0:
+            self.currentvelocity[0] = self.currentvelocity[0] + 1
         self.currentposition = np.array([random.randrange(bounds[0] * 1000, bounds[1] * 1000, 5) * 0.001,
                                          random.randrange(bounds[2] * 1000, bounds[3] * 1000, 5) * 0.001])
         self.acceleration = None

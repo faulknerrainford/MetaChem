@@ -99,26 +99,26 @@ class Graph(object):
         """
         if pointer and not isinstance(pointer, node.ControlNode):
             raise ValueError("Pointer must be a control node")
-        # input tank passed as variable to sload functions
-        transitions = 0
-        if inputtank:  # If loading from a file pass file into initial pointer for load function before main loop
-            pointer.transition()
-            pointer = self.graphdict[pointer]
-        while transitions <= transitionlimit:
-            if isinstance(pointer, node.Termination):
-                # End process
-                break
-            elif isinstance(pointer, node.Decision):
-                # Different transfer protocol
-                # Find possible transitions then use transfer to get choice between them
-                options = self.graphdict[pointer]
-                choice = pointer.transition()
-                print([choice, options, type(pointer)]) if self.verbose else None
-                pointer = options[choice]  # Set new pointer
-            else:
-                # Transfer
+        elif not isinstance(pointer, node.Termination):
+            # input tank passed as variable to sload functions
+            transitions = 0
+            if inputtank:  # If loading from a file pass file into initial pointer for load function before main loop
                 pointer.transition()
-                pointer = self.graphdict[pointer]  # Find next pointer in graph and reset pointer
-            if transitionlimit:
-                transitions = transitions+1
-        # processes over the graph by running the nodes starting from the pointer with the preload files passed in
+                pointer = self.graphdict[pointer]
+            while transitions <= transitionlimit:
+                if isinstance(pointer, node.Termination):
+                    break
+                elif isinstance(pointer, node.Decision):
+                    # Different transfer protocol
+                    # Find possible transitions then use transfer to get choice between them
+                    options = self.graphdict[pointer]
+                    choice = pointer.transition()
+                    print([choice, options, type(pointer)]) if self.verbose else None
+                    pointer = options[choice]  # Set new pointer
+                elif isinstance(pointer, node.ControlNode):
+                    # Transfer
+                    pointer.transition()
+                    pointer = self.graphdict[pointer]  # Find next pointer in graph and reset pointer
+                if transitionlimit:
+                    transitions = transitions+1
+            # processes over the graph by running the nodes starting from the pointer with the preload files passed in

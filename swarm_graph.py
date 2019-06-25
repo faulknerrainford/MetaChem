@@ -6,9 +6,10 @@ import node
 import graph
 
 gen_num = 100
-bounds = [-1000, 1000, -1000, 1000]
+bounds = [-100, 100, -100, 100]
 boid_size = 1
 swarm_size = 100
+ani_steps = 5
 
 # Containers:
 #   sample input
@@ -57,7 +58,7 @@ demptyt = control.EmptyDecision(2, tankt)  # Loop as option 2
 sreset = control.BruteSampler(tankn1, tankn)
 # Terminator, decision and visualiser
 dgen = control.CounterDecision(2, envGen, gen_num)  # Termination as option 2
-oviz = swarm_nodes.VisualizerObserver(envPos, bounds, boid_size, gen_num)
+oviz = swarm_nodes.VisualizerObserver(envPos, bounds, boid_size, gen_num, ani_steps, 'Swarm_Animation.mp4')
 term = node.Termination()
 
 # Graph
@@ -65,7 +66,7 @@ swarm_edges = [[sload, olog], [olog, sboid], [sboid, oav], [oav, dneigh], [dneig
                [acoh, aali], [aali, asep], [asep, awhi], [awhi, apac], [arand, apac],
                [apac, srboid], [srboid, demptyn], [demptyn, sboid1], [demptyn, sboid],
                [sboid1, aupp], [aupp, srboid1], [srboid1, demptyt], [demptyt, sreset], [demptyt, sboid1],
-               [sreset, dgen], [dgen, olog], [dgen, oviz], [dgen, term]]
+               [sreset, dgen], [dgen, olog], [dgen, oviz], [oviz, term]]
 
 swarm_system = graph.Graph(swarm_edges, verbose=True)
 swarm_system.run_graph(sload)
