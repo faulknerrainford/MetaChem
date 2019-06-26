@@ -25,6 +25,7 @@ tankn1 = container.ListTank()
 #   sample boid
 tankt = container.ListTank()
 sampleb = container.ListSample()
+samplecol = container.ListSample()
 #   environment neigh
 envAv = container.ListEnvironment()
 #   Log environments
@@ -34,6 +35,7 @@ envGen = container.ListEnvironment()
 envGen.add(0)
 envNeigh = container.ListEnvironment()
 envlog = container.ListEnvironment()
+envColl = container.StackEnvironment()
 
 # Control nodes
 sload = control.BruteSampler(samplein, tankn)
@@ -56,6 +58,11 @@ srboid1 = control.BruteSampler(sampleb, tankn1)
 demptyt = control.EmptyDecision(2, tankt)  # Loop as option 2
 #   Generic decision based on if a tank or sample is empty
 sreset = control.BruteSampler(tankn1, tankn)
+ocol = swarm_nodes.CollisionObserver(envColl, envColl, tankn)
+scol = swarm_nodes.CollisionSampler(tankn, samplecol, envColl)
+acol = swarm_nodes.CollisionAction([samplecol, envColl], samplecol)
+srcol = control.BruteSampler(samplecol, tankn)
+demptyc = control.EmptyDecision(2, envColl)
 # Terminator, decision and visualiser
 dgen = control.CounterDecision(2, envGen, gen_num)  # Termination as option 2
 oviz = swarm_nodes.VisualizerObserver(envPos, bounds, boid_size, gen_num, ani_steps, 'Swarm_Animation.mp4')
@@ -66,7 +73,8 @@ swarm_edges = [[sload, olog], [olog, sboid], [sboid, oav], [oav, dneigh], [dneig
                [acoh, aali], [aali, asep], [asep, awhi], [awhi, apac], [arand, apac],
                [apac, srboid], [srboid, demptyn], [demptyn, sboid1], [demptyn, sboid],
                [sboid1, aupp], [aupp, srboid1], [srboid1, demptyt], [demptyt, sreset], [demptyt, sboid1],
-               [sreset, dgen], [dgen, olog], [dgen, oviz], [oviz, term]]
+               [sreset, ocol], [ocol, demptyc], [demptyc, dgen], [demptyc, scol], [scol, acol], [acol, srcol],
+               [srcol, demptyc], [dgen, olog], [dgen, oviz], [oviz, term]]
 
 swarm_system = graph.Graph(swarm_edges, verbose=True)
 swarm_system.run_graph(sload)

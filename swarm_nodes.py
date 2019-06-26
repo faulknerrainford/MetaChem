@@ -287,19 +287,20 @@ class UpdatePAction(node.Action):
 # Collision nodes
 
 #   Collision observer
-class collisionObserver(node.Observer):
+class CollisionObserver(node.Observer):
 
     def __init__(self, containersin, containersout, readcontainers=None, index=0, coll_dist=1):
-        super(collisionObserver, self).__init__(containersin, containersout, readcontainers, index)
+        super(CollisionObserver, self).__init__(containersin, containersout, readcontainers, index)
         self.coll_dist = coll_dist
         self.coll_list = []
+        self.tank = None
 
     def read(self):
-        super(collisionObserver, self).read()
+        super(CollisionObserver, self).read()
         self.tank = self.readcontainers.read()
 
     def pull(self):
-        super(collisionObserver, self).pull()
+        super(CollisionObserver, self).pull()
 
     def process(self):
         for boid in self.tank:
@@ -313,14 +314,17 @@ class collisionObserver(node.Observer):
 
 
 #   Collision Sampler
-class collisionSampler(node.Sampler):
+class CollisionSampler(node.Sampler):
 
     def __init__(self, containersin, containersout, readcontainers):
-        super(collisionSampler, self).__init__(containersin, containersout, readcontainers)
+        super(CollisionSampler, self).__init__(containersin, containersout, readcontainers)
+        self.coll = None
+        self.tank = None
 
     def read(self):
-        super(collisionSampler, self).read()
-        self.coll= self.readcontainers.read()[0]
+        super(CollisionSampler, self).read()
+        print self.readcontainers.read()
+        self.coll = self.readcontainers.read()[0]
         self.tank = self.containersin.read()
 
     def pull(self):
@@ -332,6 +336,41 @@ class collisionSampler(node.Sampler):
 
 
 #   Collision action
+class CollisionAction(node.Action):
+
+    def __init__(self, containersin, containersout):
+        super(CollisionAction, self).__init__(containersin, containersout)
+        self.tank = containersin[0]
+        self.containersout = containersout
+        self.boid1 = None
+        self.boid2 = None
+        self.collenv = containersin[1]
+        self.coll = None
+
+    def read(self):
+        [self.boid1, self.boid2] = self.tank.read()
+        self.coll = self.collenv.read()
+
+    def pull(self):
+        self.tank.remove([self.boid1, self.boid2])
+        self.collenv.remove(1)
+
+    def check(self):
+        return super(CollisionAction, self).check()
+
+    def process(self):
+        inds = random.sample(range(7), random.randrange(7))
+        [self.boid2.r, self.boid1.r] = [self.boid1.r, self.boid2.r] if 0 in inds else False
+        [self.boid2.vn, self.boid1.vn] = [self.boid1.vn, self.boid2.vn] if 1 in inds else False
+        [self.boid2.vm, self.boid1.vm] = [self.boid1.vm, self.boid2.vm] if 2 in inds else False
+        [self.boid2.c1, self.boid1.c1] = [self.boid1.c1, self.boid2.c1] if 3 in inds else False
+        [self.boid2.c2, self.boid1.c2] = [self.boid1.c2, self.boid2.c2] if 4 in inds else False
+        [self.boid2.c3, self.boid1.c3] = [self.boid1.c3, self.boid2.c3] if 5 in inds else False
+        [self.boid2.c4, self.boid1.c4] = [self.boid1.c4, self.boid2.c4] if 6 in inds else False
+        [self.boid2.c5, self.boid1.c5] = [self.boid1.c5, self.boid2.c5] if 7 in inds else False
+
+    def push(self):
+        self.containersout.add([self.boid1, self.boid2])
 
 
 # observation logger - does all the things.
@@ -355,6 +394,7 @@ class VizLoggerObserver(node.Observer):
         self.containersin.remove([self.time])
 
     def process(self):
+        self.tank.sort()
         for boid in self.tank:
             self.positions.append(boid.currentposition)
             self.velocities.append(boid.currentvelocity)
@@ -369,7 +409,7 @@ class VizLoggerObserver(node.Observer):
 
 class VisualizerObserver(node.Observer):
 
-    def __init__(self, readcontainers, bounds, boid_size, gen_time, ani_steps, file):
+    def __init__(self, readcontainers, bounds, boid_size, gen_time, ani_steps, writefile):
         super(VisualizerObserver, self).__init__(None, None, readcontainers)
         self.gen_time = gen_time
         self.bounds = bounds
@@ -388,7 +428,7 @@ class VisualizerObserver(node.Observer):
         self.viz_gens = None
         self.sa = None
         self.ani_steps = ani_steps
-        self.file = file
+        self.file = writefile
 
     def read(self):
         super(VisualizerObserver, self).read()
@@ -413,8 +453,8 @@ class VisualizerObserver(node.Observer):
     def push(self):
         super(VisualizerObserver, self).push()
         Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-        self.anim.save(self.file, writer=writer)
+        writer_inst = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+        self.anim.save(self.file, writer=writer_inst)
         plt.show()
 
 

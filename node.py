@@ -80,14 +80,25 @@ class Termination(ControlNode):
     def push(self):
         super(Termination, self).push()
 
+
 class Action(ControlNode):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def __init__(self, writesample, readsample, readcontainers=None):
         super(Action, self).__init__()
-        if not isinstance(writesample, Sample) or not isinstance(readsample, Sample):
-            raise ValueError("Action can only read and write to Samples")
+        if isinstance(readsample, list):
+            for rs in readsample:
+                if not isinstance(rs, ContainerNode) or isinstance(rs, Tank):
+                    raise ValueError("Action can only read from Samples and Environments")
+        elif isinstance(readsample, Tank) or not isinstance(readsample, ContainerNode):
+            raise ValueError("Action can only read and write to Samples and Environments")
+        if isinstance(writesample, list):
+            for ws in writesample:
+                if not isinstance(ws, ContainerNode) or isinstance(ws, Tank):
+                    raise ValueError("Action can only write to Samples and Environments")
+        elif isinstance(writesample, Tank) or not isinstance(writesample, ContainerNode):
+            raise ValueError("Action can only read and write to Samples and Environments")
         if not isinstance(readsample, Sample) or not isinstance(readcontainers, ContainerNode) and readcontainers:
             raise ValueError("Action can only read from containers")
         self.writesample = writesample
@@ -191,16 +202,16 @@ class Observer(ControlNode):
     @abc.abstractmethod
     def __init__(self, containersin, containersout, readcontainers=None, index=0):
         super(Observer, self).__init__()
-        if containersin and not isinstance(containersin, ContainerNode) and \
-                not all(isinstance(ci, ContainerNode) for ci in containersin) or \
-                 containersout and not isinstance(containersout, Environment) and \
-                not all(isinstance(co, Environment) for co in containersout):
+        if containersin and not isinstance(containersin, ContainerNode) \
+                and not all(isinstance(ci, ContainerNode) for ci in containersin) \
+                or containersout and not isinstance(containersout, Environment) \
+                and not all(isinstance(co, Environment) for co in containersout):
             raise ValueError("Observers can only read containers nodes and write to variables")
         self.containersin = containersin
         self.containersout = containersout
         if not isinstance(readcontainers, ContainerNode) and readcontainers and not isinstance(readcontainers, list):
             raise ValueError("Observer can only read from containers")
-        elif isinstance(readcontainers, list) and  not all(isinstance(rc, ContainerNode) for rc in readcontainers):
+        elif isinstance(readcontainers, list) and not all(isinstance(rc, ContainerNode) for rc in readcontainers):
             raise ValueError("Observer can only read from containers")
         self.readcontainers = readcontainers
         self.index = index
@@ -208,7 +219,7 @@ class Observer(ControlNode):
 
     @abc.abstractmethod
     def read(self):
-        if not isinstance(self.readcontainers, list):
+        if isinstance(self.readcontainers, ContainerNode):
             return self.readcontainers.read()
         else:
             return [rc.read() for rc in self.readcontainers]
