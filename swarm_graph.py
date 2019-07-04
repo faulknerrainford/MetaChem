@@ -5,16 +5,17 @@ import control
 import node
 import graph
 
-gen_num = 100
-bounds = [-100, 100, -100, 100]
+gen_num = 10
+bounds = [-1000, 1000, -1000, 1000]
 boid_size = 1
-swarm_size = 100
+swarm_size = 300
 ani_steps = 5
 
 # Containers:
 #   sample input
 samplein = container.ListSample()
-samplein.add(swarm_particles.initialise_swarm([[1, [70.55, 5.52, 7.39, 0.97, 0.45, 35.51, 0.45, 0.06]]], bounds,
+samplein.add(swarm_particles.initialise_swarm([[132, [45.91, 10.82, 21.11, 0.86, 0.13, 42.48, 0.32, 0.74]],
+                                               [84, [113.26, 3.41, 25.71, 0.4, 0.39, 49.53, 0.13, 0.24]]], bounds,
                                               swarm_size))
 # fill start container
 

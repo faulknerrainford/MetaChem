@@ -62,16 +62,10 @@ class NeighbourObserver(node.Observer):
             # for each in the positions if they are a neighbour then add them to the listings.
             currentrecord = self.NeighPos[i]
             currentvel = self.NeighVel[i]
-            while isinstance(currentrecord[0], list) or isinstance(currentrecord[0], np.ndarray):
-                currentrecord = currentrecord[0]
-                currentvel = currentvel[0]
-            while isinstance(self.boid.currentposition[0], list) or isinstance(
-                    self.boid.currentposition[0], np.ndarray):
-                self.boid.currentposition = self.boid.currentposition[0]
             if self.boid.currentposition[0]-self.boid.r <= currentrecord[0] <= \
                     self.boid.currentposition[0]+self.boid.r and self.boid.currentposition[1]-self.boid.r <= \
                     currentrecord[1] <= self.boid.currentposition[1]+self.boid.r:
-                neighbour = neighbour + [tuple([currentrecord, currentvel])]
+                neighbour = neighbour + [(currentrecord, currentvel)]
         if neighbour:
             self.posAv = [np.mean([boid[0][0] for boid in neighbour]),
                           np.mean([boid[0][1] for boid in neighbour])]
@@ -271,8 +265,8 @@ class UpdatePAction(node.Action):
         self.readsample.remove(self.boid)
 
     def process(self):
-        self.boid.currentvelocity = self.boid.newvelocity
-        self.boid.currentposition = self.boid.currentposition + self.boid.currentvelocity
+        self.boid.currentvelocity = np.squeeze(self.boid.newvelocity)
+        self.boid.currentposition = np.squeeze(self.boid.currentposition + self.boid.currentvelocity)
 
     def push(self):
         self.writesample.add(self.boid)
@@ -323,7 +317,6 @@ class CollisionSampler(node.Sampler):
 
     def read(self):
         super(CollisionSampler, self).read()
-        print self.readcontainers.read()
         self.coll = self.readcontainers.read()[0]
         self.tank = self.containersin.read()
 
@@ -395,9 +388,8 @@ class VizLoggerObserver(node.Observer):
 
     def process(self):
         self.tank.sort()
-        for boid in self.tank:
-            self.positions.append(boid.currentposition)
-            self.velocities.append(boid.currentvelocity)
+        self.positions = [boid.currentposition for boid in self.tank]
+        self. velocities = [boid.currentvelocity for boid in self.tank]
         self.time = self.time + 1
 
     def push(self):
@@ -482,17 +474,17 @@ class Surface:
     def updatestep(self, viz_gens, i):
         # update velocities taken from swarm and passed into surface/gen_time to give smoother generations
         if not i % self.ani_steps:
-            formerstate = np.array(viz_gens[i/self.ani_steps])
-            newstate = np.array(viz_gens[i/self.ani_steps + 1])
-            state = formerstate
+            formerstate = viz_gens[i/self.ani_steps]
+            newstate = viz_gens[i/self.ani_steps + 1]
+            state = list(formerstate)
             for g in range(len(formerstate)):
                 state[g] = (newstate[g] - formerstate[g]) * ((1 / self.ani_steps)*(i % self.ani_steps)) + state[g]
         else:
-            state = np.array(viz_gens[i/self.ani_steps])
-        for coord in state:
-            while isinstance(coord[0], list) or isinstance(coord[0], np.ndarray):
-                coord = coord[0]
-        self.state = np.squeeze(np.squeeze(state))
+            state = viz_gens[i/self.ani_steps]
+        # for coord in state:
+        #     while isinstance(coord[0], list) or isinstance(coord[0], np.ndarray):
+        #         coord = np.squeeze(coord)
+        self.state = np.squeeze(state)
 
     def step(self, dt):
         # generation is defined as gen_time time steps
