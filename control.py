@@ -13,7 +13,6 @@ class BruteSampler(node.Sampler):
         self.sample = self.containersin.read()
 
     def pull(self):
-        print self.sample
         self.containersin.remove(self.sample)
         pass
 
@@ -33,8 +32,29 @@ class SimpleSampler(node.Sampler):
     def read(self):
         self.sample = random.sample(self.containersin.read(), min(self.size, len(self.containersin.read())))
 
+
     def pull(self):
         [self.containersin.remove(elem) for elem in self.sample]
+        pass
+
+    def push(self):
+        self.containersout.add(self.sample)
+        pass
+
+
+class OrderedSampler(node.Sampler):
+
+    def __init__(self, containersin, containersout, readcontainers=None, n=1):
+        super(OrderedSampler, self).__init__(containersin, containersout, readcontainers)
+        self.sample = []
+        self.size = n
+        pass
+
+    def read(self):
+        self.sample = self.containersin.read()[0:self.size]
+
+    def pull(self):
+        self.containersin.remove(self.sample)
         pass
 
     def push(self):
@@ -84,10 +104,31 @@ class CounterDecision(node.Decision):
         pass
 
     def read(self):
-        self.check = self.readcontainers.read()
+        self.check = self.readcontainers.read()[0]
 
     def process(self):
         if self.check >= self.threshold:
+            return self.options[1]
+        else:
+            return self.options[0]
+
+
+class EmptyDecision(node.Decision):
+
+    def __init__(self, options=2, readcontainers=None):
+        if isinstance(readcontainers, list):
+            raise TypeError("CounterDecision takes only a single readcontainer")
+        if options == 2:
+            super(EmptyDecision, self).__init__(options, readcontainers)
+        else:
+            raise ValueError("CounterDecision takes exactly two control options")
+        pass
+
+    def read(self):
+        self.check = self.readcontainers.read()
+
+    def process(self):
+        if self.check:
             return self.options[1]
         else:
             return self.options[0]
