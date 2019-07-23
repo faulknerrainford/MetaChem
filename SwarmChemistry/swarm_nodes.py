@@ -251,9 +251,16 @@ class UpdateVAction(node.Action):
 
 class UpdatePAction(node.Action):
 
-    def __init__(self, writesample, readsample):
+    def __init__(self, writesample, readsample, bounds):
         super(UpdatePAction, self).__init__(writesample, readsample)
         self.boid = None
+        self.bounds = bounds
+        self.shift0 = -bounds[0] if bounds[0]<0 else bounds[0]
+        self.shift1 = -bounds[2] if bounds[2]<0 else bounds[2]
+        self.mod0 = bounds[1]-bounds[0]
+        self.mod1 = bounds[3]-bounds[2]
+
+
 
     def read(self):
         self.boid = self.readsample.read()[0]
@@ -267,6 +274,8 @@ class UpdatePAction(node.Action):
     def process(self):
         self.boid.currentvelocity = np.squeeze(self.boid.newvelocity)
         self.boid.currentposition = np.squeeze(self.boid.currentposition + self.boid.currentvelocity)
+        self.boid.currentposition[0] = (self.boid.currentposition[0] + self.shift0)%self.mod0 - self.shift0
+        self.boid.currentposition[1] = (self.boid.currentposition[1] + self.shift1)%self.mod1 - self.shift1
 
     def push(self):
         self.writesample.add(self.boid)

@@ -1,21 +1,22 @@
-import swarm_nodes
-import swarm_particles
+from SwarmChemistry import swarm_nodes
+from SwarmChemistry import swarm_particles
 import container
 import control
 import node
 import graph
 
-gen_num = 10
+gen_num = 2000
 bounds = [-1000, 1000, -1000, 1000]
 boid_size = 1
-swarm_size = 300
-ani_steps = 5
+swarm_size = 500
+ani_steps = 3
 
 # Containers:
 #   sample input
 samplein = container.ListSample()
-samplein.add(swarm_particles.initialise_swarm([[132, [45.91, 10.82, 21.11, 0.86, 0.13, 42.48, 0.32, 0.74]],
-                                               [84, [113.26, 3.41, 25.71, 0.4, 0.39, 49.53, 0.13, 0.24]]], bounds,
+samplein.add(swarm_particles.initialise_swarm([[102, [293.86, 17.06, 38.3, 0.81, 0.05, 0.83, 0.2, 0.9]],
+                                               [124, [226.18, 19.27, 24.57, 0.95, 0.84, 13.09, 0.07, 0.8]],
+                                               [74, [49.98, 8.44, 4.39, 0.92, 0.14, 96.92, 0.13, 0.51]]], bounds,
                                               swarm_size))
 # fill start container
 
@@ -54,7 +55,7 @@ apac = swarm_nodes.UpdateVAction(sampleb, sampleb)
 srboid = control.BruteSampler(sampleb, tankt)
 demptyn = control.EmptyDecision(2, tankn)  # Loop as option 2
 sboid1 = control.SimpleSampler(tankt, sampleb)
-aupp = swarm_nodes.UpdatePAction(sampleb, sampleb)
+aupp = swarm_nodes.UpdatePAction(sampleb, sampleb, bounds)
 srboid1 = control.BruteSampler(sampleb, tankn1)
 demptyt = control.EmptyDecision(2, tankt)  # Loop as option 2
 #   Generic decision based on if a tank or sample is empty
@@ -66,7 +67,7 @@ srcol = control.BruteSampler(samplecol, tankn)
 demptyc = control.EmptyDecision(2, envColl)
 # Terminator, decision and visualiser
 dgen = control.CounterDecision(2, envGen, gen_num)  # Termination as option 2
-oviz = swarm_nodes.VisualizerObserver(envPos, bounds, boid_size, gen_num, ani_steps, 'Swarm_Animation.mp4')
+oviz = swarm_nodes.VisualizerObserver(envPos, bounds, boid_size, gen_num, ani_steps, 'Swarm_Animation2.mp4')
 term = node.Termination()
 
 # Graph

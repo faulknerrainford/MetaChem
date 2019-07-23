@@ -1,8 +1,8 @@
 """
-Graph module is designed to handle and run MetaChem graphs, see Rainford et. al. 2018. It currently only creates and
+Graph module is designed to handle and run MetaChem graphs, see Rainford et. al. 2019. It currently only creates and
 implements basic static MetaChem Graphs with all data preloaded and the information graph formed during control node
 instantiation. Later efforts will modify control node class to allow node fuction to be declared and the information
-links added seperately. This will require the additional processing of the information links to be implemented in the
+links added separately. This will require the additional processing of the information links to be implemented in the
 graph object.
 
 Classes
