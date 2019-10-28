@@ -29,15 +29,17 @@ import control
 
 class StringCatLoadSampler(node.Sampler):
 
-    def __init__(self, containersin, containersout, readcontainers=None, size=1, tanks=1):
-        super(StringCatLoadSampler, self).__init__(containersin, containersout, readcontainers)
+    def __init__(self, size=1, tanks=1):
+        super(StringCatLoadSampler, self).__init__()
         self.size = size
         self.tanks = tanks
         self.sample = None
         pass
 
-    def read(self):
-        self.sample = [[random.choice(string.uppercase) for _ in range(0, self.size)] for _ in range(0, self.tanks)]
+    def read(self, info):
+        super(StringCatLoadSampler, self).read(info)
+        self.sample = [[random.choice(string.ascii_uppercase) for _ in range(0, self.size)]
+                       for _ in range(0, self.tanks)]
 
     def pull(self):
         self.containersin.remove(self.sample)
@@ -50,12 +52,13 @@ class StringCatLoadSampler(node.Sampler):
 
 class StringCatDecompDecision(node.Decision):
 
-    def __init__(self, options=2, readcontainers=None):
-        super(StringCatDecompDecision, self).__init__(options, readcontainers)
+    def __init__(self, options=2):
+        super(StringCatDecompDecision, self).__init__(options)
         self.samplestring = None
         pass
 
-    def read(self):
+    def read(self, info):
+        super(StringCatDecompDecision, self).read(info)
         self.samplestring = self.readcontainers.read()
 
     def process(self):
@@ -69,22 +72,23 @@ class StringCatDecompDecision(node.Decision):
 
 class StringCatConcatAction(node.Action):
 
-    def __init__(self, writesample, readsample, readcontainers=None):
-        super(StringCatConcatAction, self).__init__(writesample, readsample, readcontainers)
+    def __init__(self):
+        super(StringCatConcatAction, self).__init__()
         self.sample = []
         pass
 
-    def read(self):
-        self.sample = self.readsample.read()
+    def read(self, info):
+        super(StringCatConcatAction, self).read(info)
+        self.sample = self.containersin.read()
 
     def pull(self):
         # print "pre-remove on pull"
         # print self.sample
         # print self.readsample.read()
-        self.readsample.remove(self.sample)
+        self.containersin.remove(self.sample)
 
     def check(self):
-        super(StringCatConcatAction, self).check()
+        return super(StringCatConcatAction, self).check()
 
     def process(self):
         # print self.sample
@@ -93,63 +97,63 @@ class StringCatConcatAction(node.Action):
         pass
 
     def push(self):
-        self.writesample.add(self.sample)
+        self.containersout.add(self.sample)
 
 
 class StingCatSplitAction(node.Action):
 
-    def __init__(self, writesample, readsample, readcontainers=None):
-        super(StingCatSplitAction, self).__init__(writesample, readsample, readcontainers)
+    def __init__(self):
+        super(StingCatSplitAction, self).__init__()
         self.sample = None
         pass
 
-    def read(self):
-        self.sample = self.readsample.read()
+    def read(self, info):
+        super(StingCatSplitAction, self).read(info)
+        self.sample = self.containersin.read()
 
     def pull(self):
-        self.readsample.remove(self.sample)
+        self.containersin.remove(self.sample)
 
     def check(self):
-        super(StingCatSplitAction, self).check()
+        return super(StingCatSplitAction, self).check()
 
     def process(self):
         doubleindex = [i for i in range(0, len(self.sample) - 1) if self.sample[i] == self.sample[i+1]]
         index = random.choice(doubleindex)
         self.sample = [self.sample[0:index], self.sample[index:0]]
-        self.writesample.add(self.sample)
         pass
 
     def push(self):
-        self.writesample.add(self.sample)
+        self.containersout.add(self.sample)
 
 
 class StringCatTransfersSampler(node.Sampler):
 
-    def __init__(self, containersin, containersout, readcontainers=None,
-                 gridrows=1, gridcols=1, samplesize=1):
-        super(StringCatTransfersSampler, self).__init__(containersin, containersout, readcontainers)
+    def __init__(self, gridrows=1, gridcols=1, samplesize=1):
+        super(StringCatTransfersSampler, self).__init__()
         self.gridrows = gridrows
         self.gridcols = gridcols
         self.pairs = []
         self.samplesize = samplesize
         pass
 
-    def read(self):
-        super(StringCatTransfersSampler, self).read()
+    def read(self, info):
+        super(StringCatTransfersSampler, self).read(info)
 
     def pull(self):
-        sample = self.containersin[0].read()
-        indices = range(0, self.gridcols*self.gridrows)
+        sample = self.containersin.read()
+        indices = list(range(0, self.gridcols*self.gridrows))
         pairs = []
         for cell in indices:
             neighbours = [cell+1, cell-1, cell+self.gridrows, cell-self.gridrows]
-            for checkcell in neighbours:
-                if checkcell not in indices:
-                    neighbours.remove(checkcell)
+            neighbours = [n for n in neighbours if neighbours in indices]
             if not neighbours:
                 indices.remove(cell)
                 continue
+            print(indices)
+            print(neighbours)
             othercell = random.choice(neighbours)
+            print(othercell)
             indices.remove(othercell)
             indices.remove(cell)
             pairs.append([cell, othercell])
@@ -213,12 +217,12 @@ class StringCatTank(container.ListTank):
 
 class StringCatCommitSampler(control.BruteSampler):
 
-    def __init__(self, containersin, containersout, readcontainers=None):
-        super(StringCatCommitSampler, self).__init__(containersin, containersout, readcontainers)
+    def __init__(self):
+        super(StringCatCommitSampler, self).__init__()
         pass
 
-    def read(self):
-        super(StringCatCommitSampler, self).read()
+    def read(self, info):
+        super(StringCatCommitSampler, self).read(info)
         pass
 
     def pull(self):

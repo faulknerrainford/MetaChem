@@ -16,19 +16,19 @@ Vreactions.add(0)
 TLoad = container.ListTank()  # Empty tank used as place holder as no input tank needed
 
 # control nodes
-Sload = stringcat_nodes.StringCatLoadSampler(TLoad, TTanks, size=100, tanks=400)
-Otime = control.ClockObserver(Vtime, Vtime)
-Ssamplertank = control.SimpleSampler(TTanks, TTank)
-Ssamplerstring = control.SimpleSampler(TTank, Scomposite)
-Ssamplerstringdecomp = control.SimpleSampler(TTank, Scomposite)
-Ddecomp = stringcat_nodes.StringCatDecompDecision(2, Scomposite)
-Aconcat = stringcat_nodes.StringCatConcatAction(Scomposite, Scomposite)
-Asplit = stringcat_nodes.StingCatSplitAction(Scomposite, Scomposite)
-Sreturn = control.BruteSampler(Scomposite, TTank)
-Scommit = stringcat_nodes.StringCatCommitSampler(TTank, TTanks)
-Oreaction = control.ClockObserver(Vreactions, Vreactions)
-Dupdate = control.CounterDecision(2, Vreactions, 200)
-Stransfers = stringcat_nodes.StringCatTransfersSampler(TTanks, TTanks, gridrows=20, gridcols=20, samplesize=1)
+Sload = stringcat_nodes.StringCatLoadSampler(size=100, tanks=400)
+Otime = control.ClockObserver()
+Ssamplertank = control.SimpleSampler()
+Ssamplerstring = control.SimpleSampler()
+Ssamplerstringdecomp = control.SimpleSampler()
+Ddecomp = stringcat_nodes.StringCatDecompDecision(2)
+Aconcat = stringcat_nodes.StringCatConcatAction()
+Asplit = stringcat_nodes.StingCatSplitAction()
+Sreturn = control.BruteSampler()
+Scommit = stringcat_nodes.StringCatCommitSampler()
+Oreaction = control.ClockObserver()
+Dupdate = control.CounterDecision(2, 200)
+Stransfers = stringcat_nodes.StringCatTransfersSampler(gridrows=20, gridcols=20, samplesize=1)
 
 # Implement control edge set to get graph
 edges = [[Sload, Otime], [Otime, Ssamplertank], [Ssamplertank, Ssamplerstring], [Ssamplerstring, Ddecomp],
@@ -39,10 +39,20 @@ edges = [[Sload, Otime], [Otime, Ssamplertank], [Ssamplertank, Ssamplerstring], 
          [Dupdate, Stransfers], [Dupdate, Ssamplertank],  # Loop to the start of reaction
          [Stransfers, Otime]]  # Loop to the start to the generation
 
+infoedges = [[Sload, TLoad, 'i'], [Sload, TTanks, 'o'], [Otime, Vtime, 'i'], [Otime, Vtime, 'o'],
+             [Ssamplertank, TTanks,'i'], [Ssamplertank, TTank, 'o'], [Ssamplerstring, TTank, 'i'],
+             [Ssamplerstring, Scomposite, 'o'], [Ssamplerstringdecomp, TTank, 'i'],
+             [Ssamplerstringdecomp, Scomposite, 'o'], [Ddecomp, Scomposite, 'r'], [Aconcat, Scomposite, 'i'],
+             [Aconcat, Scomposite, 'o'], [Asplit, Scomposite, 'i'], [Asplit, Scomposite, 'o'],
+             [Sreturn, Scomposite, 'i'], [Sreturn, TTank, 'o'], [Scommit, TTank, 'i'], [Scommit, TTanks, 'o'],
+             [Oreaction, Vreactions, 'i'], [Oreaction, Vreactions, 'o'], [Dupdate, Vreactions, 'r'],
+             [Stransfers, TTanks, 'i'], [Stransfers, TTanks, 'o']]
+
+info = graph.Information(infoedges)
 system = graph.Graph(edges, verbose=True)
 
 # run graph
-system.run_graph(Sload, transitionlimit=200000)
-print TTanks.read()
-print TTank.read()
-print Scomposite.read()
+system.run_graph(Sload, info, transitionlimit=200000)
+print(TTanks.read())
+print(TTank.read())
+print(Scomposite.read())

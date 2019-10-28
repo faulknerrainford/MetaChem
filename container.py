@@ -31,11 +31,14 @@ class ListTank(node.Tank):
         # print particles
         if self.list and isinstance(self.list[0], list) and not isinstance(particles[0], list):
             self.list.remove(particles)
-        elif not isinstance(particles,list):
+        elif not isinstance(particles, list):
             self.list.remove(particles)
         elif self.list:
             [self.list.remove(part) for part in particles]
         return self.list
+
+
+# TODO: Write partitioned list tank to make nested tanks explicit.
 
 
 class ListSample(node.Sample):

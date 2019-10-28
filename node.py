@@ -111,10 +111,13 @@ class ControlNode(object):
     @abc.abstractmethod
     def __init__(self):
         self.id = id(self)
+        self.containersin = None
+        self.containersout = None
+        self.readcontainers = None
         pass
 
-    def transition(self):
-        self.read()
+    def transition(self, info):
+        self.read(info)
         if self.check() < random.random():
             self.pull()
             self.process()
@@ -122,8 +125,8 @@ class ControlNode(object):
         pass
 
     @abc.abstractmethod
-    def read(self):
-        pass
+    def read(self, info):
+        [self.containersin, self.containersout, self.readcontainers] = info.graphdict[self]
 
     @abc.abstractmethod
     def check(self):
@@ -166,8 +169,8 @@ class Termination(ControlNode):
     def __init__(self):
         super(Termination, self).__init__()
 
-    def read(self):
-        super(Termination, self).read()
+    def read(self, info):
+        super(Termination, self).read(info)
 
     def pull(self):
         super(Termination, self).pull()
@@ -188,13 +191,6 @@ class Action(ControlNode):
 
     ...
 
-    Attributes
-    ----------
-    writesample:    The sample node to which the node will push modified or new particles to. Must be a Sample.
-    readsample:     The sample node from which the node will pull particles to modify or use in forming new particles. Must
-                    be a Sample.
-    readcontainers: Any other particle or environment containers the node needs to read from for it's process.
-
     Methods
     -------
     read()
@@ -212,25 +208,8 @@ class Action(ControlNode):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def __init__(self, writesample, readsample, readcontainers=None):
+    def __init__(self):
         super(Action, self).__init__()
-        if isinstance(readsample, list):
-            for rs in readsample:
-                if not isinstance(rs, ContainerNode) or isinstance(rs, Tank):
-                    raise ValueError("Action can only read from Samples and Environments")
-        elif isinstance(readsample, Tank) or not isinstance(readsample, ContainerNode):
-            raise ValueError("Action can only read and write to Samples and Environments")
-        if isinstance(writesample, list):
-            for ws in writesample:
-                if not isinstance(ws, ContainerNode) or isinstance(ws, Tank):
-                    raise ValueError("Action can only write to Samples and Environments")
-        elif isinstance(writesample, Tank) or not isinstance(writesample, ContainerNode):
-            raise ValueError("Action can only read and write to Samples and Environments")
-        if not isinstance(readsample, Sample) or not isinstance(readcontainers, ContainerNode) and readcontainers:
-            raise ValueError("Action can only read from containers")
-        self.writesample = writesample
-        self.readsample = readsample
-        self.readcontainers = readcontainers
 
     @abc.abstractmethod
     def check(self):
@@ -241,8 +220,8 @@ class Action(ControlNode):
         super(Action, self).process()
         
     @abc.abstractmethod
-    def read(self):
-        super(Action, self).read()
+    def read(self, info):
+        super(Action, self).read(info)
         
     @abc.abstractmethod
     def pull(self):
@@ -263,7 +242,6 @@ class Decision(ControlNode):
     Attributes
     ----------
     options: Integer indicating the number of outgoing graph edges.
-    readcontainers: List of containers which are read to provide information to base decision on.
 
     Methods
     -------
@@ -285,17 +263,14 @@ class Decision(ControlNode):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def __init__(self, options=1, readcontainers=None):
+    def __init__(self, options=1):
         super(Decision, self).__init__()
-        if not isinstance(readcontainers, ContainerNode):
-            raise ValueError("Decision can only read from containers")
         self.options = range(0, options)
-        self.readcontainers = readcontainers
         pass
 
     @abc.abstractmethod
-    def read(self):
-        super(Decision, self).read()
+    def read(self, info):
+        super(Decision, self).read(info)
 
     @abc.abstractmethod
     def process(self):
@@ -310,8 +285,8 @@ class Decision(ControlNode):
     def push(self):
         super(Decision, self).push()
 
-    def transition(self):
-        self.read()
+    def transition(self, info):
+        self.read(info)
         return self.process()
 
 
@@ -323,9 +298,6 @@ class Sampler(ControlNode):
 
     Attributes
     ----------
-    containersin: Containers from which the node can read and remove particles
-    containersout: Containers from which the node can read and add particles
-    readcontainers: Containers from which the node can read information
     sample: List for storing particles in while moving them between containers
 
     Methods
@@ -345,22 +317,14 @@ class Sampler(ControlNode):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def __init__(self, containersin, containersout, readcontainers=None):
+    def __init__(self):
         super(Sampler, self).__init__()
-        if not isinstance(containersout, ContainerNode) or not isinstance(containersin, ContainerNode):
-            raise ValueError("Sampler can only push and pull from containers")
-        else:
-            if isinstance(containersin, Environment) or isinstance(containersout, Environment):
-                raise ValueError("Sample can only push and pull from particle containers")
-        self.containersin = containersin
-        self.containersout = containersout
-        self.readcontainers = readcontainers
         self.sample = []
         pass
 
     @abc.abstractmethod
-    def read(self):
-        super(Sampler, self).read()
+    def read(self, info):
+        super(Sampler, self).read(info)
 
     @abc.abstractmethod
     def pull(self):
@@ -386,9 +350,6 @@ class Observer(ControlNode):
 
     Attributes
     ----------
-    containersin: Containers from which the node can read and remove.
-    containersout: Containers from which the node can read and add.
-    readcontainers: Containers from which the node can read only.
     index: Used to indicate the need to read a particular variable in a list.
 
     Methods
@@ -408,29 +369,19 @@ class Observer(ControlNode):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def __init__(self, containersin, containersout, readcontainers=None, index=0):
+    def __init__(self, index=0):
         super(Observer, self).__init__()
-        if containersin and not isinstance(containersin, ContainerNode) \
-                and not all(isinstance(ci, ContainerNode) for ci in containersin) \
-                or containersout and not isinstance(containersout, Environment) \
-                and not all(isinstance(co, Environment) for co in containersout):
-            raise ValueError("Observers can only read containers nodes and write to variables")
-        self.containersin = containersin
-        self.containersout = containersout
-        if not isinstance(readcontainers, ContainerNode) and readcontainers and not isinstance(readcontainers, list):
-            raise ValueError("Observer can only read from containers")
-        elif isinstance(readcontainers, list) and not all(isinstance(rc, ContainerNode) for rc in readcontainers):
-            raise ValueError("Observer can only read from containers")
-        self.readcontainers = readcontainers
         self.index = index
         pass
 
     @abc.abstractmethod
-    def read(self):
-        if isinstance(self.readcontainers, ContainerNode):
-            return self.readcontainers.read()
-        else:
-            return [rc.read() for rc in self.readcontainers]
+    def read(self, info):
+        super(Observer, self).read(info)
+        if self.readcontainers:
+            if isinstance(self.readcontainers, ContainerNode):
+                return self.readcontainers.read()
+            else:
+                return [rc.read() for rc in self.readcontainers]
 
     @abc.abstractmethod
     def process(self):

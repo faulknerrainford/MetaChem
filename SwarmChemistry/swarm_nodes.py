@@ -12,12 +12,13 @@ import matplotlib.animation as animation
 # uses first boid in sample (or random in unordered container) for reference to pull neighbours
 class NeighbourSampler(node.Sampler):
 
-    def __init__(self, containersin, containersout, readcontainers=None):
-        super(NeighbourSampler, self).__init__(containersin, containersout, readcontainers)
+    def __init__(self):
+        super(NeighbourSampler, self).__init__()
         self.Neighbours = []
         self.boid = None
 
-    def read(self):
+    def read(self, info):
+        super(NeighbourSampler, self).read(info)
         self.boid = self.readcontainers.read()[0]
         self.Neighbours = [neighbour for neighbour in self.containersin.read() if
                            self.boid.currentPosition[0]-self.boid.R <= neighbour.currentPosition[0]
@@ -34,8 +35,8 @@ class NeighbourSampler(node.Sampler):
 # BUILD Observer to generate averages of neighbours (check if this needs to include boid itself)
 class NeighbourObserver(node.Observer):
 
-    def __init__(self, containersin, containersout, readcontainers=None):
-        super(NeighbourObserver, self).__init__(containersin, containersout, readcontainers)
+    def __init__(self):
+        super(NeighbourObserver, self).__init__()
         self.boid = None
         self.NeighPos = []
         self.NeighVel = []
@@ -45,7 +46,8 @@ class NeighbourObserver(node.Observer):
         self.sepTot = None
         self.count = 0
 
-    def read(self):
+    def read(self, info):
+        super(NeighbourObserver, self).read(info)
         self.boid = self.readcontainers[0].read()[0]
         self.NeighPos = self.readcontainers[1].read()[-1]
         self.NeighVel = self.readcontainers[2].read()[-1]
@@ -91,140 +93,146 @@ class NeighbourObserver(node.Observer):
 
 class CohesionAction(node.Action):
 
-    def __init__(self, writesample, readsample, readcontainers):
-        super(CohesionAction, self).__init__(writesample, readsample, readcontainers)
+    def __init__(self):
+        super(CohesionAction, self).__init__()
         self.avPos = None
         self.boid = None
 
-    def read(self):
+    def read(self, info):
+        super(CohesionAction, self).read(info)
         self.avPos = self.readcontainers.read()[0]
-        self.boid = self.readsample.read()[0]
+        self.boid = self.containersin.read()[0]
 
     def check(self):
         return super(CohesionAction, self).check()
 
     def pull(self):
-        self.readsample.remove(self.boid)
+        self.containersin.remove(self.boid)
 
     def process(self):
         self.boid.acceleration = self.boid.c1*(self.avPos - self.boid.currentposition)
 
     def push(self):
-        self.writesample.add(self.boid)
+        self.containersout.add(self.boid)
 
 
 # align
 class AlignAction(node.Action):
 
-    def __init__(self, writesample, readsample, readcontainers):
-        super(AlignAction, self).__init__(writesample, readsample, readcontainers)
+    def __init__(self):
+        super(AlignAction, self).__init__()
         self.avVel = None
         self.boid = None
 
-    def read(self):
+    def read(self, info):
+        super(AlignAction, self).read(info)
         self.avVel = self.readcontainers.read()[1]
-        self.boid = self.readsample.read()[0]
+        self.boid = self.containersin.read()[0]
 
     def check(self):
         return super(AlignAction, self).check()
 
     def pull(self):
-        self.readsample.remove(self.boid)
+        self.containersin.remove(self.boid)
 
     def process(self):
         self.boid.acceleration = self.boid.acceleration+self.boid.c2*(self.avVel - self.boid.currentvelocity)
 
     def push(self):
-        self.writesample.add(self.boid)
+        self.containersout.add(self.boid)
 
 
 # seperation
 class SeperationAction(node.Action):
 
-    def __init__(self, writesample, readsample, readcontainers):
-        super(SeperationAction, self).__init__(writesample, readsample, readcontainers)
+    def __init__(self):
+        super(SeperationAction, self).__init__()
         self.totSep = None
         self.boid = None
 
-    def read(self):
+    def read(self, info):
+        super(SeperationAction, self).read(info)
         self.totSep = self.readcontainers.read()[2]
-        self.boid = self.readsample.read()[0]
+        self.boid = self.containersin.read()[0]
 
     def check(self):
         return super(SeperationAction, self).check()
 
     def pull(self):
-        self.readsample.remove(self.boid)
+        self.containersin.remove(self.boid)
 
     def process(self):
         self.boid.acceleration = self.boid.acceleration+self.boid.c3*self.totSep
 
     def push(self):
-        self.writesample.add(self.boid)
+        self.containersout.add(self.boid)
 
 
 # whim
 class WhimAction(node.Action):
 
-    def __init__(self, writesample, readsample):
-        super(WhimAction, self).__init__(writesample, readsample)
+    def __init__(self):
+        super(WhimAction, self).__init__()
         self.boid = None
 
-    def read(self):
-        self.boid = self.readsample.read()[0]
+    def read(self, info):
+        super(WhimAction, self).read(info)
+        self.boid = self.containersin.read()[0]
 
     def check(self):
         return super(WhimAction, self).check()
 
     def pull(self):
-        self.readsample.remove(self.boid)
+        self.containersin.remove(self.boid)
 
     def process(self):
         self.boid.acceleration = self.boid.acceleration + np.array([random.random()-0.5, random.random()-0.5])
 
     def push(self):
-        self.writesample.add(self.boid)
+        self.containersout.add(self.boid)
 
 
 # random
 # random walk
 class RWalkAction(node.Action):
 
-    def __init__(self, writesample, readsample):
-        super(RWalkAction, self).__init__(writesample, readsample)
+    def __init__(self):
+        super(RWalkAction, self).__init__()
         self.boid = None
 
-    def read(self):
-        self.boid = self.readsample.read()[0]
+    def read(self, info):
+        super(RWalkAction, self).read(info)
+        self.boid = self.containersin.read()[0]
 
     def check(self):
         return super(RWalkAction, self).check()
 
     def pull(self):
-        self.readsample.remove(self.boid)
+        self.containersin.remove(self.boid)
 
     def process(self):
         self.boid.acceleration = np.array([random.random()-0.5, random.random()-0.5])
 
     def push(self):
-        self.writesample.add(self.boid)
+        self.containersout.add(self.boid)
 
 
 # pacekeeping
 class UpdateVAction(node.Action):
 
-    def __init__(self, writesample, readsample):
-        super(UpdateVAction, self).__init__(writesample, readsample)
+    def __init__(self):
+        super(UpdateVAction, self).__init__()
         self.boid = None
 
-    def read(self):
-        self.boid = self.readsample.read()[0]
+    def read(self, info):
+        super(UpdateVAction, self).read(info)
+        self.boid = self.containersin.read()[0]
 
     def check(self):
         return super(UpdateVAction, self).check()
 
     def pull(self):
-        self.readsample.remove(self.boid)
+        self.containersin.remove(self.boid)
 
     def process(self):
         self.boid.newvelocity = self.boid.currentvelocity + self.boid.acceleration
@@ -235,7 +243,7 @@ class UpdateVAction(node.Action):
                                                         ) + (1 - self.boid.c5) * np.array(self.boid.currentvelocity)
 
     def push(self):
-        self.writesample.add(self.boid)
+        self.containersout.add(self.boid)
 
 # Ordered Sampler works with ordered containers, always adds to end and removes from start. Mostly done by using a
 # type of ordered container.
@@ -251,34 +259,33 @@ class UpdateVAction(node.Action):
 
 class UpdatePAction(node.Action):
 
-    def __init__(self, writesample, readsample, bounds):
-        super(UpdatePAction, self).__init__(writesample, readsample)
+    def __init__(self, bounds):
+        super(UpdatePAction, self).__init__()
         self.boid = None
         self.bounds = bounds
-        self.shift0 = -bounds[0] if bounds[0]<0 else bounds[0]
-        self.shift1 = -bounds[2] if bounds[2]<0 else bounds[2]
+        self.shift0 = -bounds[0] if bounds[0] < 0 else bounds[0]
+        self.shift1 = -bounds[2] if bounds[2] < 0 else bounds[2]
         self.mod0 = bounds[1]-bounds[0]
         self.mod1 = bounds[3]-bounds[2]
 
-
-
-    def read(self):
-        self.boid = self.readsample.read()[0]
+    def read(self, info):
+        super(UpdatePAction, self).read(info)
+        self.boid = self.containersin.read()[0]
 
     def check(self):
         return super(UpdatePAction, self).check()
 
     def pull(self):
-        self.readsample.remove(self.boid)
+        self.containersin.remove(self.boid)
 
     def process(self):
         self.boid.currentvelocity = np.squeeze(self.boid.newvelocity)
         self.boid.currentposition = np.squeeze(self.boid.currentposition + self.boid.currentvelocity)
-        self.boid.currentposition[0] = (self.boid.currentposition[0] + self.shift0)%self.mod0 - self.shift0
-        self.boid.currentposition[1] = (self.boid.currentposition[1] + self.shift1)%self.mod1 - self.shift1
+        self.boid.currentposition[0] = (self.boid.currentposition[0] + self.shift0) % self.mod0 - self.shift0
+        self.boid.currentposition[1] = (self.boid.currentposition[1] + self.shift1) % self.mod1 - self.shift1
 
     def push(self):
-        self.writesample.add(self.boid)
+        self.containersout.add(self.boid)
 
 
 # ordered sampler from above
@@ -292,14 +299,14 @@ class UpdatePAction(node.Action):
 #   Collision observer
 class CollisionObserver(node.Observer):
 
-    def __init__(self, containersin, containersout, readcontainers=None, index=0, coll_dist=1):
-        super(CollisionObserver, self).__init__(containersin, containersout, readcontainers, index)
+    def __init__(self, index=0, coll_dist=1):
+        super(CollisionObserver, self).__init__(index)
         self.coll_dist = coll_dist
         self.coll_list = []
         self.tank = None
 
-    def read(self):
-        super(CollisionObserver, self).read()
+    def read(self, info):
+        super(CollisionObserver, self).read(info)
         self.tank = self.readcontainers.read()
 
     def pull(self):
@@ -319,13 +326,13 @@ class CollisionObserver(node.Observer):
 #   Collision Sampler
 class CollisionSampler(node.Sampler):
 
-    def __init__(self, containersin, containersout, readcontainers):
-        super(CollisionSampler, self).__init__(containersin, containersout, readcontainers)
+    def __init__(self):
+        super(CollisionSampler, self).__init__()
         self.coll = None
         self.tank = None
 
-    def read(self):
-        super(CollisionSampler, self).read()
+    def read(self, info):
+        super(CollisionSampler, self).read(info)
         self.coll = self.readcontainers.read()[0]
         self.tank = self.containersin.read()
 
@@ -340,16 +347,18 @@ class CollisionSampler(node.Sampler):
 #   Collision action
 class CollisionAction(node.Action):
 
-    def __init__(self, containersin, containersout):
-        super(CollisionAction, self).__init__(containersin, containersout)
-        self.tank = containersin[0]
-        self.containersout = containersout
+    def __init__(self):
+        super(CollisionAction, self).__init__()
+        self.tank = None
         self.boid1 = None
         self.boid2 = None
-        self.collenv = containersin[1]
         self.coll = None
+        self.collenv = None
 
-    def read(self):
+    def read(self, info):
+        super(CollisionAction, self).read(info)
+        self.tank = self.containersin[0]
+        self.collenv = self.containersin[1]
         [self.boid1, self.boid2] = self.tank.read()
         self.coll = self.collenv.read()
 
@@ -378,14 +387,15 @@ class CollisionAction(node.Action):
 # observation logger - does all the things.
 class VizLoggerObserver(node.Observer):
 
-    def __init__(self, containersin, containersout, readcontainers=None, index=None):
-        super(VizLoggerObserver, self).__init__(containersin, containersout, readcontainers, index)
+    def __init__(self, index=None):
+        super(VizLoggerObserver, self).__init__(index)
         self.tank = None
         self.positions = []
         self.velocities = []
         self.time = None
 
-    def read(self):
+    def read(self, info):
+        super(VizLoggerObserver, self).read(info)
         self.tank = self.readcontainers.read()
         self.time = self.containersin.read()[0]
 
@@ -410,8 +420,8 @@ class VizLoggerObserver(node.Observer):
 
 class VisualizerObserver(node.Observer):
 
-    def __init__(self, readcontainers, bounds, boid_size, gen_time, ani_steps, writefile):
-        super(VisualizerObserver, self).__init__(None, None, readcontainers)
+    def __init__(self, bounds, boid_size, gen_time, ani_steps, writefile):
+        super(VisualizerObserver, self).__init__()
         self.gen_time = gen_time
         self.bounds = bounds
         self.boid_size = boid_size
@@ -431,8 +441,8 @@ class VisualizerObserver(node.Observer):
         self.ani_steps = ani_steps
         self.file = writefile
 
-    def read(self):
-        super(VisualizerObserver, self).read()
+    def read(self, info):
+        super(VisualizerObserver, self).read(info)
         self.world = Surface(self.readcontainers, self.particles, self.bounds, self.boid_size, self.ani_steps)
         self.viz_gens = self.readcontainers.read()
         for gen in self.viz_gens:
