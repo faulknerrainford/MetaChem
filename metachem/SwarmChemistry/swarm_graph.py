@@ -1,9 +1,6 @@
-from SwarmChemistry import swarm_nodes
-from SwarmChemistry import swarm_particles
-import container
-import control
-import node
-import graph
+from source.SwarmChemistry import swarm_nodes
+from source.SwarmChemistry import swarm_particles
+from source import control, container, node, graph
 
 gen_num = 2000
 bounds = [-1000, 1000, -1000, 1000]
@@ -39,9 +36,12 @@ envNeigh = container.ListEnvironment()
 envlog = container.ListEnvironment()
 envColl = container.StackEnvironment()
 
-# Control nodes
+# Control Nodes
+# Load parameters
 sload = control.BruteSampler(samplein, tankn)
+# Logging
 olog = swarm_nodes.VizLoggerObserver(envGen, [envlog, envPos, envVel, envGen], tankn)
+# Neighbourhood observation
 sboid = control.SimpleSampler(tankn, sampleb)
 oav = swarm_nodes.NeighbourObserver([envAv, envNeigh], [envAv, envNeigh], [sampleb, envPos, envVel])
 dneigh = control.CounterDecision(2, envNeigh)  # Flocking as option 2
@@ -55,13 +55,16 @@ apac = swarm_nodes.UpdateVAction(sampleb, sampleb)
 srboid = control.BruteSampler(sampleb, tankt)
 demptyn = control.EmptyDecision(2, tankn)  # Loop as option 2
 sboid1 = control.SimpleSampler(tankt, sampleb)
+# Update parameters after flocking
 aupp = swarm_nodes.UpdatePAction(sampleb, sampleb, bounds)
 srboid1 = control.BruteSampler(sampleb, tankn1)
 demptyt = control.EmptyDecision(2, tankt)  # Loop as option 2
-#   Generic decision based on if a tank or sample is empty
+# Generic decision based on if a tank or sample is empty
 sreset = control.BruteSampler(tankn1, tankn)
+# Observe collisions
 ocol = swarm_nodes.CollisionObserver(envColl, envColl, tankn)
 scol = swarm_nodes.CollisionSampler(tankn, samplecol, envColl)
+# Update parameters based on collision
 acol = swarm_nodes.CollisionAction([samplecol, envColl], samplecol)
 srcol = control.BruteSampler(samplecol, tankn)
 demptyc = control.EmptyDecision(2, envColl)
