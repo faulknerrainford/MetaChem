@@ -12,6 +12,32 @@ class WellMixedTank(Template):
 
     def __init__(self, bondgraph, sample_size=2, reactions=100, generations=10000, tank_size=1000, load_type=None,
                  log_node=None, load_file=None):
+        """
+        Simulates a well mixed tank approach to an artificial chemistry. It generates a single tank of particles. In
+        each generation it attempts the number of reactions requested by sampling the correct number of particles and
+        handing it to the bondgraph. It places the returned particles back in to the tank.
+
+        Parameters
+        ----------
+
+        bondgraph   :   Subgraph
+            The metachem graph that will perform bonding. Must have a single link container and
+            a single control node in and out.
+        sample_size :   int
+            The number of particles placed in the sample for the bonding graph.
+        reactions   :   int
+            The number of bonding reactions to perform each generation.
+        generations :   int
+            The number of generations to perform before exiting the simulation.
+        tank_size   :   int
+            The number of particles to put in the initial tank.
+        load_type   :   String
+            The type of initial tank to read/generate. "scc" - Uppercase letters, "int" - integers, "csv" - read from csv file
+        log_node    :   CoreNode.Observer
+            A node used to log information from the simulation
+        load_file   :   String
+            The file path for csv file if reading in initial tank.
+        """
         super(WellMixedTank, self).__init__(bondgraph)
         # check bondgraph meets requirements for well mixed tank
         if not (
@@ -74,6 +100,10 @@ class WellMixedTank(Template):
         bondgraph.links[0].set_linknode(SComposite)
 
     def print_tank(self):
+        """
+        Prints the contents of the main tank.
+
+        """
         print(self.tank.read())
 
 

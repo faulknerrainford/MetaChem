@@ -120,7 +120,10 @@ class ListSample(CoreNode.Sample):
         """
         if self.list:
             # print len(particles.rst)
-            self.list = self.list + particles
+            if isinstance(particles, list):
+                self.list = self.list + particles
+            else:
+                self.list.append(particles)
         elif isinstance(particles, list):
             self.list = particles
         else:

@@ -8,4 +8,6 @@ class Subgraph:
         self.count_control_out = controls_out
         self.count_links = links
         self.graph = nx.DiGraph()
-        pass
+        self.links = []
+        self.control_in = []
+        self.control_out = []
