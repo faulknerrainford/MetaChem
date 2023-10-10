@@ -4,8 +4,9 @@ import string
 
 import networkx as nx
 
-from metachem import Template, CoreNode, CoreContainer, CoreControl, Simulate
+from metachem import Template, CoreNode, CoreContainer, CoreControl, Simulate, ParticleFactory, Particle
 from metachem.StringCatChem import SCCBond
+from metachem.RBNworld import WatsonRBNParticleFactory
 
 
 class WellMixedTank(Template):
@@ -32,7 +33,8 @@ class WellMixedTank(Template):
         tank_size   :   int
             The number of particles to put in the initial tank.
         load_type   :   String
-            The type of initial tank to read/generate. "scc" - Uppercase letters, "int" - integers, "csv" - read from csv file
+            The type of initial tank to read/generate. "scc" - Uppercase letters, "int" - integers,
+            "csv" - read from csv file, "RBN" - Watson RBNs
         log_node    :   CoreNode.Observer
             A node used to log information from the simulation
         load_file   :   String
@@ -55,6 +57,9 @@ class WellMixedTank(Template):
         VTime.add(0)
         VGen = CoreContainer.StackEnvironment(self.graph)
         VGen.add(0)
+        VBond = CoreContainer.DictionaryEnvironment(self.graph)
+        VReaction = CoreContainer.DataFrameEnvironment(self.graph, ["id1", "id2", "obj1", "obj2", "Prods"])
+        self.reactions = VReaction
         # connect SComposite to link containers
         SComposite = CoreContainer.ListSample(self.graph)
         for link in bondgraph.links:
@@ -76,6 +81,8 @@ class WellMixedTank(Template):
         oreset = CoreControl.ClockResetObserver(self.graph, VGen, VGen)
         ogen = CoreControl.ClockObserver(self.graph, VGen, VGen)
         dgen = TimingsDecision(self.graph, [VGen, VTime, TTank], generations, reactions, sample_size)
+        osample = SampleObserver(self.graph, VBond, VBond, SComposite)
+        oreturn = ReturnObserver(self.graph, VBond, VReaction, SComposite)
         # if log_node given include
         if log_node:
             olog = log_node
@@ -84,8 +91,9 @@ class WellMixedTank(Template):
             olog = TimeLoggerObserver(self.graph, [VTime, VGen], [VTime, VGen])
 
         # Creat stable graph edges
-        edges = [[sload, otime], [otime, oreset], [oreset, ssample], [sreturn, ogen], [ogen, dgen], [dgen, ssample],
-                 [dgen, sgeneration], [sgeneration, olog], [olog, otime], [dgen, ssimulation], [ssimulation, tterm]]
+        edges = [[sload, otime], [otime, oreset], [oreset, ssample], [ssample, osample], [oreturn, sreturn],
+                 [sreturn, ogen], [ogen, dgen], [dgen, ssample], [dgen, sgeneration], [sgeneration, olog],
+                 [olog, otime], [dgen, ssimulation], [ssimulation, tterm]]
 
         # add edges to graph
         for edge in edges:
@@ -94,8 +102,8 @@ class WellMixedTank(Template):
         # connect bonding graph
         self.graph = nx.compose(self.graph, bondgraph.graph)
         # connect control in and out
-        self.graph.add_edge(ssample, bondgraph.control_in[0])
-        self.graph.add_edge(bondgraph.control_out[0], sreturn)
+        self.graph.add_edge(osample, bondgraph.control_in[0])
+        self.graph.add_edge(bondgraph.control_out[0], oreturn)
         # connect link node
         bondgraph.links[0].set_linknode(SComposite)
 
@@ -104,7 +112,14 @@ class WellMixedTank(Template):
         Prints the contents of the main tank.
 
         """
-        print(self.tank.read())
+        stuff = self.tank.read()
+        if isinstance(stuff[0], Particle):
+            print([part.id for part in stuff])
+        else:
+            print(self.tank.read())
+
+    def print_reactions(self):
+        print(self.reactions.read())
 
 
 class LoadSampler(CoreNode.Sampler):
@@ -112,7 +127,7 @@ class LoadSampler(CoreNode.Sampler):
     def __init__(self, graph, containersout=None, tank_size=1000,
                  load_type="int", load_file=None):
         """
-        Loads initial state of tank for the system. This can be read in from a csv file or it can generate a tank.
+        Loads initial state of tank for the system. This can be read in from a csv file, or it can generate a tank.
         Generated tanks can hold:
         'scc' - Uppercase letters
         'int' - integers from 0 to 100
@@ -125,9 +140,11 @@ class LoadSampler(CoreNode.Sampler):
             Tank for the generated or read in particles to be put into.
         tank_size       :   int
             Number of particles in the initial tank.
-        load_type       :   String
-            How the tank should be generated: read from csv (csv), generate uppercase letters (scc), generate ints (int)
-        load_file       :   Stringmain block
+        load_type       :   String/ParticleFactory
+            How the tank should be generated: read from csv (csv), generate uppercase letters (scc),
+            generate ints (int), generate WatsonRBN particles (RBN). It can also take an initialised ParticleFactory
+            which will then be called to generate enough particles to fill the tank
+        load_file       :   String
             File path to csv file to read in
         """
         super(LoadSampler, self).__init__(graph, CoreNode.Sample(graph), containersout)
@@ -156,6 +173,11 @@ class LoadSampler(CoreNode.Sampler):
             self.sample = [random.choice(string.ascii_uppercase) for _ in range(0, self.tank_size)]
         elif self.load_type == "int":
             self.sample = [random.randint(0, 100) for _ in range(0, self.tank_size)]
+        elif self.load_type == "RBN":
+            factory = WatsonRBNParticleFactory(8, 2)
+            self.sample = factory.createParticles(self.tank_size)
+        elif isinstance(self.load_type, ParticleFactory):
+            self.sample = self.load_type.createParticles(self.tank_size)
 
     def push(self):
         """
@@ -264,9 +286,74 @@ class TimeLoggerObserver(CoreNode.Observer):
         pass
 
 
+class SampleObserver(CoreNode.Observer):
+    """
+    Records the particles in a sample before a bond is attempted.
+    """
+    def __init__(self, graph, containersin, containersout, readcontainers=None):
+        super(SampleObserver, self).__init__(graph, containersin, containersout, readcontainers)
+        self.sample = None
+        self.dict = None
+
+    def read(self):
+        self.sample = self.readcontainers.read()
+
+    def pull(self):
+        self.containersout.remove(["id1", "id2", "obj1", "obj2"])
+
+    def process(self):
+        if isinstance(self.sample[0], Particle):
+            id1 = self.sample[0].id
+        else:
+            id1 = 'n/a'
+        if len(self.sample)>1:
+            if isinstance(self.sample[1], Particle):
+                id2 = self.sample[1].id
+            else:
+                id2 = 'n/a'
+            obj2 = self.sample[1]
+        else:
+            id2 = 'None'
+            obj2 = 'None'
+        obj1 = self.sample[0]
+        self.dict = {"id1": id1, "id2": id2, "obj1": obj1, "obj2": obj2}
+
+    def push(self):
+        self.containersout.add(self.dict)
+
+
+class ReturnObserver(CoreNode.Observer):
+    """
+    Records the result of the bonding attempt and pushes to a log of all reaction attempts.
+    """
+
+    def __init__(self, graph, containersin, containersout, readcontainers=None):
+        super(ReturnObserver, self).__init__(graph, containersin, containersout, readcontainers)
+        self.sample = None
+        self.dict = None
+
+    def read(self):
+        self.sample = self.readcontainers.read()
+        self.dict = self.containersin.read()
+
+    def pull(self):
+        pass
+
+    def process(self):
+        if isinstance(self.sample[0], Particle):
+            prods = tuple([(part.id, part) for part in self.sample])
+        else:
+            prods = tuple([part for part in self.sample])
+        self.dict["Prods"] = prods
+
+    def push(self):
+        self.containersout.add(self.dict)
+
+
 if __name__ == "__main__":
     scc_bondgraph = SCCBond()
     reactor = WellMixedTank(scc_bondgraph, load_type="scc")
     sim = Simulate(reactor.graph, reactor.start)
     sim.run_graph()
     reactor.print_tank()
+    reactor.print_reactions()

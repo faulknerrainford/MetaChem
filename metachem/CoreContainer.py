@@ -1,7 +1,7 @@
 # Set of generic classes for general use in Artificial Chemistries
 
 import metachem.CoreNode as CoreNode
-
+import pandas as pd
 
 # Basic containers using lists/nested lists
 
@@ -719,7 +719,7 @@ class DictionaryEnvironment(CoreNode.Environment):
         Returns storage to confirm successful change.
 
         """
-        self.dict = self.dict | variables
+        self.dict.update(variables)
         # print len(self.list)
         return self.dict
 
@@ -741,6 +741,34 @@ class DictionaryEnvironment(CoreNode.Environment):
             if var in self.dict.keys():
                 del self.dict[var]
         return self.dict
+
+
+class DataFrameEnvironment(CoreNode.Environment):
+
+    def __init__(self, graph, columns):
+        super(DataFrameEnvironment, self).__init__(graph)
+        self.DataFrame = pd.DataFrame(columns=columns)
+
+    def read(self):
+        return self.DataFrame
+
+    def add(self, variables=None):
+        if isinstance(variables, list):
+            if list(variables[0].keys()) == list(self.DataFrame.columns):
+                temp_df = pd.DataFrame(variables)
+                self.DataFrame = pd.concat([self.DataFrame, temp_df], ignore_index=True)
+        elif list(variables.keys()) == list(self.DataFrame.columns):
+            self.DataFrame.loc[len(self.DataFrame)] = variables
+
+    def remove(self, variables=None):
+        df = self.DataFrame
+        if isinstance(variables, list):
+            for row in variables:
+                check = df[(df == pd.Series(row)).all(1)]
+                self.DataFrame.drop(check.index, inplace=True)
+        else:
+            check = df[(df == pd.Series(variables)).all(1)]
+            self.DataFrame.drop(check.index, inplace=True)
 
 
 class LinkTank(CoreNode.Tank):

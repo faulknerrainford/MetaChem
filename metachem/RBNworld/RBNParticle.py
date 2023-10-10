@@ -4,12 +4,16 @@ rbn particle class taken from Meta-AChem by Issac Watson.
 import numpy as np
 from numpy import *
 import pickle
-from metachem import ParticleFactory
+from metachem import ParticleFactory, Particle
 
 
-class RBNParticle:
+class RBNParticle(Particle):
 
     def __init__(self, rbns, bonded_spikes, open_spikes, spike_type=None, maxSizeAtom=250):
+        super(RBNParticle, self).__init__()
+        if len(rbns) == 1:
+            self.atom = True
+        self.id = tuple([rbn.id for rbn in rbns])
         self.atoms = rbns
         self.open_spikes = open_spikes
         self.bonds = bonded_spikes
@@ -228,7 +232,7 @@ class RBN:
         # Fill array with appropriate number of nodes and give each node its
         # connections
         for i in range(self.n):
-            self.nodeArray = append(self.nodeArray, Node(i, self, booleanFuncs[i, ], self.k))
+            self.nodeArray = append(self.nodeArray, Node(i, self, booleanFuncs[i,], self.k))
 
         for i in range(self.n):
             # Generate a new node object
@@ -325,7 +329,7 @@ class RBN:
 
         if ndim(self.states) > 1:
             # print ("Original states is: \n" + str(self.states) + "\n" )
-            self.states = self.states[0, ]
+            self.states = self.states[0,]
             # print (" New states is: \n" + str(self.states) + "\n" )
             self.numIterations = 0
 
@@ -409,7 +413,7 @@ class RBN:
             # print ("In this area \n")
             return
         else:
-            self.states = self.states[size(self.states, 0) - 1, ]
+            self.states = self.states[size(self.states, 0) - 1,]
         # print ("The state matrix is: "  + str(self.states) + "\n")
 
         for i in range(size(self.states)):
@@ -421,7 +425,7 @@ class RBN:
         """
         # print ("The number of rows is: " + str(size(self.states,0)) + "\n")
         # print ("The number of iterations is: " + str(self.numIterations) + "\n")
-        state = self.states[size(self.states, 0) - 1, ]
+        state = self.states[size(self.states, 0) - 1,]
         self.states = delete(self.states, size(self.states, 0) - 1, 0)
         self.numIterations -= 1
         # print ("Number of iterations is: " + str(self.numIterations) + "\n")

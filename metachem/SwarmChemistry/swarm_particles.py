@@ -5,11 +5,12 @@ import numpy as np
 import random
 # import sys
 import warnings
+from metachem import Particle
 
 warnings.filterwarnings('error')
 
 
-class Boid:
+class Boid(Particle):
     """
     Boids are the atomic particles of the Swarm Chemistry system. They have position, velocity, colour and swarming
     parameters.
@@ -25,6 +26,9 @@ class Boid:
     """
 
     def __init__(self, currentparams, bounds, colour='black'):
+        super(Boid, self).__init__()
+        self.atom = True
+        self.located = True
         [r, vn, vm, c1, c2, c3, c4, c5] = currentparams
         self.r = r
         self.Vn = vn
@@ -41,6 +45,7 @@ class Boid:
         self.currentposition = np.array([random.randrange(bounds[0] * 1000, bounds[1] * 1000, 5) * 0.001,
                                          random.randrange(bounds[2] * 1000, bounds[3] * 1000, 5) * 0.001])
         self.acceleration = None
+        self.location = self.currentposition
 
     def updateparam(self, newparams):
         """
