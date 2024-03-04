@@ -5,13 +5,30 @@ import numpy as np
 import random
 # import sys
 import warnings
+from metachem import Particle
 
 warnings.filterwarnings('error')
 
 
-class Boid:
+class Boid(Particle):
+    """
+    Boids are the atomic particles of the Swarm Chemistry system. They have position, velocity, colour and swarming
+    parameters.
+
+    Parameters
+    -----------
+    currentparams : List<int>
+        A list of parameters [r, vn, vm, c1, c2, c3, c4, c5]
+    bounds : List<int>
+        A list [x_min, x_max, y_min, y_max] the bounds for the x, y position coordinates of the boid.
+    colour : string
+        Name of colour for the boid if visual output is used.
+    """
 
     def __init__(self, currentparams, bounds, colour='black'):
+        super(Boid, self).__init__()
+        self.atom = True
+        self.located = True
         [r, vn, vm, c1, c2, c3, c4, c5] = currentparams
         self.r = r
         self.Vn = vn
@@ -28,8 +45,18 @@ class Boid:
         self.currentposition = np.array([random.randrange(bounds[0] * 1000, bounds[1] * 1000, 5) * 0.001,
                                          random.randrange(bounds[2] * 1000, bounds[3] * 1000, 5) * 0.001])
         self.acceleration = None
+        self.location = self.currentposition
 
     def updateparam(self, newparams):
+        """
+        Takes a similar set of parameters to the initial parameterisation and uses it to update the internal values.
+
+        Parameters
+        ----------
+        newparams : List<int>
+            List of replacement parameters: [r, vn, vm, c1, c2, c3, c4, c5]
+
+        """
         if newparams[0] < 0 or newparams[0] > 300:
             return BoidError('Radius')
         if newparams[1] < 0 or newparams[1] > 20:
@@ -52,10 +79,26 @@ class Boid:
 
 
 class BoidError:
+    """
+    Error messaging for issues with the setting of boid parameters.
+
+    Parameters
+    ----------
+    errortype : String
+        String with the name of the parameter which is the problem.
+    """
     def __init__(self, errortype=''):
         self.etype = errortype
 
     def __str__(self):
+        """
+        Converts name of variable to meaningful error message describing likely issue with parameter.
+
+        Returns
+        -------
+        String
+            Error message
+        """
         if self.etype == 'Radius':
             return 'Radius outside 0-300 range'
         elif self.etype == 'Vn':
@@ -77,6 +120,26 @@ class BoidError:
 
 
 def initialise_swarm(initialparameters, bounds, size):
+    """
+    Method to create a swarm, a population of boids, for use in swarm chemistry.
+
+    Parameters
+    ----------
+    initialparameters : List<int>
+        Takes a list of different parameters. The set will have an int, the number of population members with that
+        parameter set, then the parameter set. Those ints are summed to give the size of the population. In the
+        parameterisation set. This is converted to a propotion to allow the user to then define their own population size.
+    bounds : List<int>
+        A list [x_min, x_max, y_min, y_max] the bounds for the x, y position coordinates of the boids.
+    size
+        Number of boids wanted in population.
+
+    Returns
+    -------
+    List<boid>
+        List of boids in the swarm.
+
+    """
     swarm = []
     parts = [p[0] for p in initialparameters]
     psize = sum(parts)
