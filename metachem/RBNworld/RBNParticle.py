@@ -179,7 +179,7 @@ class WatsonRBNParticleFactory(ParticleFactory):
         return RBNParticle([rbn], [], [(spike, rbn) for spike in rbn.spikeArray], self.spikeType, self.maxSizeAtoms)
 
 
-class RBN:
+class RBN(Particle):
 
     def __init__(self, numNodes, numConnections, rbnNumber, spikeType="Watson", seed=None):
         """
@@ -200,6 +200,8 @@ class RBN:
         RBN
             The generated rbn in its initial state with all nodes in state 0.
         """
+        super().__init__()
+        self.id = rbnNumber
         self.n = numNodes
         self.k = numConnections
         self.rbnNumber = rbnNumber

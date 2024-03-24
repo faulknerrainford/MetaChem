@@ -69,6 +69,9 @@ class TestSpikeStabilityObservation(TestCase):
         obs.transition()
         self.assertNotIn("Nonsense", env.read(), "Did not clear environment")
         self.assertEqual(1, len(env.read()), "Did not find broken bond")
+        # TODO: save out state after obersevation of this and the sample to test the bond break
+        # TODO: Find cause of nested list in broken bonds
+        # TODO: Find where sample emptied
 
 
 class TestSpikeBondBreak(TestCase):

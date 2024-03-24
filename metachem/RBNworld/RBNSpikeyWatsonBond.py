@@ -16,7 +16,7 @@ class RBNSpikeyWatsonBond(Subgraph):
         spikes_check = SpikeDecision(self.graph, link_sample)
         bonding_spikes = WatsonSpikeBond(self.graph, link_sample, link_sample)
         stability = SpikeStabilityObservation(self.graph, bb_container, bb_container, link_sample)
-        break_check = SpikeDecision(self.graph, bb_container)
+        break_check = SpikeStabilityDecision(self.graph, bb_container)
         bond_break = SpikeBondBreak(self.graph, link_sample, link_sample, bb_container)
 
         # add dummy action node which does nothing to act as join for decisions
@@ -46,6 +46,7 @@ class SpikeDecision(CoreNode.Decision):
         self.particle2 = None
 
     def read(self):
+        # print(self.readcontainers.read())
         self.particle1, self.particle2 = self.readcontainers.read()
 
     def process(self):
@@ -92,9 +93,12 @@ class WatsonSpikeBond(CoreNode.Action):
         smaller, size = findSmallestSpike(self.spike1, self.spike2)
         numSwaps = size - 1
         swapLinks(self.spike1, self.spike2, numSwaps, smaller)
+        self.particle1.open_spikes = [tuple(spike) for spike in self.particle1.open_spikes]
+        self.particle2.open_spikes = [tuple(spike) for spike in self.particle2.open_spikes]
         self.particle1.open_spikes.remove((self.spike1, self.rbn1))
         self.particle2.open_spikes.remove((self.spike2, self.rbn2))
         open_spikes = self.particle1.open_spikes + self.particle2.open_spikes
+        open_spikes = [tuple(spike) for spike in open_spikes]
         bonds = [(self.spike1, self.rbn1, self.spike2, self.rbn2)] + self.particle1.bonds + self.particle2.bonds
         rbns = self.particle1.atoms + self.particle2.atoms
         self.new_particle = RBNParticle(rbns, bonds, open_spikes, "Watson")
@@ -119,17 +123,20 @@ class SpikeStabilityObservation(CoreNode.Observer):
 
     def pull(self):
         self.containersin.remove(self.containersin.read())
+        self.broken_bonds = []
 
     def check(self):
         return super(SpikeStabilityObservation, self).check()
 
     def process(self):
         for part in self.particles:
-            if part.checkSpikes():
-                self.broken_bonds.append((part, part.checkSpikes()))
+            check = part.checkSpikes()
+            if check:
+                self.broken_bonds.append((part, check))
 
     def push(self):
         self.containersout.add(self.broken_bonds)
+        pass
 
 
 class SpikeBondBreak(CoreNode.Action):
@@ -143,9 +150,12 @@ class SpikeBondBreak(CoreNode.Action):
         self.broken_bonds = self.readcontainers.read()
 
     def pull(self):
+        removed = []
         for bond in self.broken_bonds:
             part = bond[0]
-            self.readsample.remove(part)
+            if part not in removed:
+                self.readsample.remove(part)
+                removed.append(part)
 
     def check(self):
         return super(SpikeBondBreak, self).check()

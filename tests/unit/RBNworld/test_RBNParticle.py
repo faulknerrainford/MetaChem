@@ -24,3 +24,5 @@ class TestWatsonRBNParticleFactory(TestCase):
         # # TODO: generate a tank with the same seed
         # particles2 = fact.createParticles(100, 4)
         # self.assertListEqual(particles1, particles2, "Lists with same seed not the same")
+
+    def test_create_particles(self):

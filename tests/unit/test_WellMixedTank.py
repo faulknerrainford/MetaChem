@@ -2,13 +2,23 @@ from unittest import TestCase
 
 import networkx as nx
 
-from metachem.templates.WellMixedTank import LoadSampler, TimingsDecision
+from metachem.templates.WellMixedTank import LoadSampler, TimingsDecision, WellMixedTank
 from metachem import CoreContainer, CoreNode
+from metachem.RBNworld import RBNSpikeyWatsonBond, WatsonRBNParticleFactory
+from metachem import Simulate
 
 
 class TestWellMixedTank(TestCase):
     def test_run(self):
         self.fail()
+
+    def test_rbn_run(self):
+        bond = RBNSpikeyWatsonBond()
+        tank = WellMixedTank(bond, sample_size=2, load_type='RBN', generations=100)
+        # tank.print_tank()
+        sim = Simulate(tank.graph, tank.start, verbose=False)
+        sim.run_graph(1000000000)
+        tank.print_tank()
 
 
 class TestLoadSampler(TestCase):
@@ -41,6 +51,14 @@ class TestLoadSampler(TestCase):
         sload.pull()
         sload.push()
         self.assertEqual(1000, len(TTank.list), "Did not push to tank correctly")
+
+    def test_rbn(self):
+        graph = nx.DiGraph()
+        TTank = CoreContainer.ListTank(graph)
+        sload = LoadSampler(graph, TTank, tank_size=1000, load_type="RBN")
+        sload.read()
+        sload.pull()
+        self.assertEqual(1000, len(sload.sample), "Did not generate full tank of rbn particles")
 
 
 class TestTimingsDecision(TestCase):
