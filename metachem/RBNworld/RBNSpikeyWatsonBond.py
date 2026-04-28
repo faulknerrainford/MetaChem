@@ -164,9 +164,10 @@ class SpikeBondBreak(CoreNode.Action):
     def process(self):
         for bond in self.broken_bonds:
             part = bond[0]
-            # TODO: find rbn1 and rbn2 put together spike rbn pairs for breaking bond
+            # find rbn1 and rbn2 put together spike rbn pairs for breaking bond
             broken = (bond[1])
-            self.particles = self.particles + part.breakBond(broken)
+            if broken in part.bonds:
+                self.particles = self.particles + part.breakBond(broken)
 
     def push(self):
         self.writesample.add(self.particles)

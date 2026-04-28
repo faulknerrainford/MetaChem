@@ -437,7 +437,7 @@ class Sampler(ControlNode):
                     raise ValueError("Cannot connect to container not in graph")
         elif isinstance(containersin, list):
             for ci in containersin:
-                if not isinstance(ci, Tank) or not isinstance(ci, Sample):
+                if not isinstance(ci, Tank) and not isinstance(ci, Sample):
                     raise ValueError("Sampler can only pull from containers")
                 if ci not in list(self.graph.nodes):
                     raise ValueError("Cannot connect to container not in graph")

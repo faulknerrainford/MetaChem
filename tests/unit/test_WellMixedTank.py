@@ -17,7 +17,7 @@ class TestWellMixedTank(TestCase):
 
     def test_rbn_run(self):
         bond = RBNSpikeyWatsonBond()
-        tank = WellMixedTank(bond, sample_size=2, load_type='RBN', generations=1)
+        tank = WellMixedTank(bond, sample_size=2, load_type='RBN', generations=500)
         # tank.print_tank()
         sim = Simulate(tank.graph, tank.start, verbose=False)
         sim.run_graph(1000000000)

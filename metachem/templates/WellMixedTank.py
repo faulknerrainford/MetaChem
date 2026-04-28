@@ -290,6 +290,7 @@ class SampleObserver(CoreNode.Observer):
     """
     Records the particles in a sample before a bond is attempted.
     """
+
     def __init__(self, graph, containersin, containersout, readcontainers=None):
         super(SampleObserver, self).__init__(graph, containersin, containersout, readcontainers)
         self.sample = None
@@ -306,7 +307,7 @@ class SampleObserver(CoreNode.Observer):
             id1 = self.sample[0].id
         else:
             id1 = 'n/a'
-        if len(self.sample)>1:
+        if len(self.sample) > 1:
             if isinstance(self.sample[1], Particle):
                 id2 = self.sample[1].id
             else:

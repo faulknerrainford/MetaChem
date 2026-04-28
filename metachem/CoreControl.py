@@ -131,7 +131,7 @@ class ClockObserver(CoreNode.Observer):
         The amount to be added to the variable. Default is 1.
     """
 
-    def __init__(self, graph, containersin, containersout, readcontainers=None, increment=1):
+    def __init__(self, graph, containersin, containersout, readcontainers=None, increment=1, message="Time in clock: "):
         if containersin != containersout:
             raise ValueError("Clock must read and write to same variable")
         else:
@@ -139,6 +139,7 @@ class ClockObserver(CoreNode.Observer):
             self.increment = increment
             self.clock = 0
             self.variable = self.containersin
+            self.message = message
             pass
 
     def read(self):
@@ -169,6 +170,7 @@ class ClockObserver(CoreNode.Observer):
 
         """
         self.variable.add(self.clock)
+        print(self.message, self.clock)
         pass
 
 

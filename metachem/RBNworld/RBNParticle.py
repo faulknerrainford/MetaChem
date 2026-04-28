@@ -76,7 +76,7 @@ class RBNParticle(Particle):
         particle1_open = []
         particle2_open = []
         # split atoms and spikes into correct lists for the different particles
-        while current_bonds:
+        while len(current_bonds) > 0:
             # check closed bonds and redistribute them to the two particles including rbns
             for closed in self.bonds:
                 if closed[1] in particle1_rbns:
